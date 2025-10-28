@@ -1981,6 +1981,19 @@
                 console.error('Error processing message from FiveM:', error);
             }
         });
+<script>
+  // دالة ترسل الأكشن إلى Lua
+  function sendAction(action) {
+    fetch('https://nebula/nebula_action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    }).catch(() => {});
+  }
+
+  // لو تبغى تتأكد أن Lua استقبل الرسالة
+  console.log("✅ Nebula HTML ready to communicate with Lua");
+</script>
 
     </script>
 </body>
