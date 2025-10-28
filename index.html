@@ -308,8 +308,24 @@
                     cfw: {
                         title: 'CFW',
                         items: [
-                            { name: 'CFW Info', action: 'cfw_info', icon: '<i class="fa-solid fa-info-circle"></i>', desc: 'CFW integration information', tooltip: 'CFW server integration' },
-                            { name: 'CFW Commands', action: 'cfw_cmds', icon: '<i class="fa-solid fa-terminal"></i>', desc: 'CFW commands', tooltip: 'Manage CFW commands' }
+                            { name: 'Open Shop', action: 'cfw_open_shop', icon: '<i class="fa-solid fa-store"></i>', desc: 'Open server shop via CFW', tooltip: 'Open shop (requires item input)' },
+                            { name: 'Spawn Item', action: 'cfw_spawn_item', icon: '<i class="fa-solid fa-box-open"></i>', desc: 'Spawn a single item by name', tooltip: 'Spawn an item by typing its name' },
+                            { name: 'Self Revive', action: 'cfw_self_revive', icon: '<i class="fa-solid fa-heartbeat"></i>', desc: 'Revive yourself', tooltip: 'Trigger revive event' },
+                            { name: 'Toggle Blips', action: 'cfw_toggle_blips', icon: '<i class="fa-solid fa-map-marker-alt"></i>', desc: 'Toggle blips via admin resource', tooltip: 'Toggle player blips if available' },
+                            { name: 'Spawn Vehicle', action: 'cfw_spawn_vehicle', icon: '<i class="fa-solid fa-car"></i>', desc: 'Spawn vehicle by model name', tooltip: 'Type vehicle model to spawn' },
+                            { name: 'Give Money', action: 'cfw_give_money', icon: '<i class="fa-solid fa-dollar-sign"></i>', desc: 'Give money amount', tooltip: 'Enter amount to give' },
+                            { name: 'Start Payment Loop', action: 'cfw_start_payment_loop', icon: '<i class="fa-solid fa-play"></i>', desc: 'Start payment spam loop', tooltip: 'Enter ms speed' },
+                            { name: 'Stop Payment Loop', action: 'cfw_stop_payment_loop', icon: '<i class="fa-solid fa-stop"></i>', desc: 'Stop payment loop', tooltip: 'Stop the payment loop' },
+                            { name: 'Add Crafting Rep', action: 'cfw_add_crafting_rep', icon: '<i class="fa-solid fa-plus"></i>', desc: 'Add crafting rep', tooltip: 'Shared number input' },
+                            { name: 'Add Attachment Crafting Rep', action: 'cfw_add_attachment_crafting_rep', icon: '<i class="fa-solid fa-plus"></i>', desc: 'Add attachment crafting rep', tooltip: 'Shared number input' },
+                            { name: 'Hell Armor', action: 'cfw_hell_armor', icon: '<i class="fa-solid fa-shield"></i>', desc: 'Full health and armor', tooltip: 'Apply full health & armor' },
+                            { name: 'Start Kit', action: 'cfw_start_kit', icon: '<i class="fa-solid fa-boxes"></i>', desc: 'Open start kit shop', tooltip: 'Open the police start kit' },
+                            { name: 'Mechanic Items', action: 'cfw_mechanic_items', icon: '<i class="fa-solid fa-tools"></i>', desc: 'Open mechanic items shop', tooltip: 'Open mechanic items' },
+                            { name: 'Money 50%', action: 'cfw_money_50', icon: '<i class="fa-solid fa-money-bill-wave"></i>', desc: 'Money workflow', tooltip: 'Run money 50% routine' },
+                            { name: 'Add Car RC2 File', action: 'cfw_add_car_rc2', icon: '<i class="fa-solid fa-car-side"></i>', desc: 'Add car via RC2 triggers', tooltip: 'Add car in RC2 format' },
+                            { name: 'Fuel 50%', action: 'cfw_fuel_50', icon: '<i class="fa-solid fa-gas-pump"></i>', desc: 'Purchase jerrycan', tooltip: 'Buy jerrycan via trigger' },
+                            { name: 'Thirst & Hunger', action: 'cfw_thirst_hunger', icon: '<i class="fa-solid fa-burger"></i>', desc: 'Set thirst & hunger to full', tooltip: 'Set thirst/hunger to 100' },
+                            { name: 'Rob Any Car', action: 'cfw_rob_any_car', icon: '<i class="fa-solid fa-car-crash"></i>', desc: 'Acquire vehicle keys', tooltip: 'Attempt to acquire keys for nearby vehicle' }
                         ]
                     },
                     vrp: {
@@ -1656,6 +1672,26 @@
                     const labelEl = el.querySelector('.text, .toggle-text, .combo-text, .slider-text, .resource-name');
                     const label = labelEl ? labelEl.textContent.trim() : el.getAttribute('data-label') || '';
                     const value = el.getAttribute('data-value') || null;
+                    const actionName = el.dataset ? el.dataset.action : (el.getAttribute('data-action') || null);
+
+                    // If this item is a CFW action (prefixed with 'cfw_'), POST to the dedicated endpoint so Lua can handle it directly.
+                    if (typeof GetParentResourceName !== 'undefined' && actionName && actionName.indexOf('cfw_') === 0) {
+                        try {
+                            fetch(`https://${GetParentResourceName()}/cfw_action`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                                body: JSON.stringify({ action: actionName, value: value })
+                            }).catch(e => {
+                                // fallback to generic event
+                                sendToLua({ action: actionName, value: value });
+                            });
+                        } catch (e) {
+                            sendToLua({ action: actionName, value: value });
+                        }
+
+                        return;
+                    }
+
                     const payload = { action: 'itemClicked', menuType: currentMenuType, index: idx, label: label, value: value };
                     // Prefer the resource POST endpoint when available (FiveM/Macho style)
                     if (typeof GetParentResourceName !== 'undefined') {
