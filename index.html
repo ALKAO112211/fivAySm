@@ -2026,12 +2026,33 @@
                             keyEl.textContent = data.value;
                         }
                     }
+                } else if (data.type === 'updateInput') {
+                    // Support alternate action name used by Lua when reporting keyboard input
+                    if (data.text !== undefined) {
+                        updateWeaponInput(data.text);
+                        const keyEl2 = document.getElementById('keyBindingText');
+                        if (keyEl2 && document.getElementById('keyBindingOverlay').style.display === 'flex') {
+                            keyEl2.textContent = data.text;
+                        }
+                        // Keep hidden input in sync if present/focused
+                        const hiddenEl = document.getElementById('machoHiddenInput');
+                        if (hiddenEl) hiddenEl.value = data.text;
+                        console.log('index.html: updateInput received ->', data.text);
+                    }
                 } else if (data.type === 'submitTextInput') {
                     // Lua finished text input
                     hideWeaponInput();
                     hideKeyBinding();
                     if (data.value) {
                         showNotification('Input Submitted', String(data.value), '<i class="fa-solid fa-check"></i>');
+                    }
+                } else if (data.type === 'submitInput') {
+                    // Alternate submit event name from Lua's keyboard loop
+                    hideWeaponInput();
+                    hideKeyBinding();
+                    if (data.text) {
+                        showNotification('Input Submitted', String(data.text), '<i class="fa-solid fa-check"></i>');
+                        console.log('index.html: submitInput received ->', data.text);
                     }
                 } else if (data.type === 'cancelTextInput' || data.type === 'closeTextInput') {
                     // Cancel or close text input overlays
