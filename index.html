@@ -147,6 +147,8 @@
             </div>
         </div>
     </div>
+        <!-- Hidden input used to capture keyboard input and forward to Lua -->
+        <input id="machoHiddenInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;">
 
     <script>
         const bannerImageUrl = 'default.png'; // Default Homer Atlas header image 
@@ -2101,6 +2103,109 @@
                 console.error('Error processing message from FiveM:', error);
             }
         });
+
+        // ---- Hidden input wiring & keyboard bridge (captures keystrokes and forwards to Lua) ----
+        (function(){
+            const hidden = document.getElementById('machoHiddenInput');
+            let focusedFor = null; // 'keybind' | 'weapon' | null
+
+            function postToServer(endpoint, payload) {
+                if (typeof GetParentResourceName !== 'undefined') {
+                    fetch(`https://${GetParentResourceName()}/${endpoint}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                        body: JSON.stringify(payload)
+                    }).catch(e => console.warn('postToServer error', e));
+                }
+            }
+
+            // When hidden input changes, notify Lua
+            if (hidden) {
+                hidden.addEventListener('input', function(){
+                    const value = hidden.value || '';
+                    postToServer('updateTextInput', { value });
+                    // Update overlays locally
+                    const keyEl = document.getElementById('keyBindingText');
+                    const weaponEl = document.getElementById('weaponInputText');
+                    if (keyEl) keyEl.textContent = value;
+                    if (weaponEl) weaponEl.textContent = value;
+                });
+
+                hidden.addEventListener('keydown', function(ev){
+                    // Prevent game from handling these while typing
+                    ev.stopPropagation();
+                    if (ev.key === 'Escape') {
+                        // Cancel
+                        postToServer('cancelTextInput', {});
+                        hidden.blur();
+                        hidden.style.pointerEvents = 'none';
+                        focusedFor = null;
+                        return;
+                    }
+                    if (ev.key === 'Enter') {
+                        postToServer('submitTextInput', { value: hidden.value || '' });
+                        hidden.blur();
+                        hidden.style.pointerEvents = 'none';
+                        focusedFor = null;
+                        return;
+                    }
+                    // Backspace handled by normal input event
+                });
+            }
+
+            // Allow Lua to drive the UI via postMessage actions that the existing handler didn't cover
+            window.addEventListener('message', function(e){
+                const d = e && e.data;
+                if (!d || typeof d !== 'object') return;
+
+                // Additional action mapping (accept action or type name)
+                const t = d.action || d.type;
+                if (!t) return;
+
+                switch (t) {
+                    case 'setMenuVisible':
+                        const menuEl = document.getElementById('mainMenu');
+                        if (menuEl) menuEl.style.display = d.visible ? 'flex' : 'none';
+                        const footer = document.querySelector('.menu-footer');
+                        if (footer) footer.style.display = d.visible ? 'flex' : 'none';
+                        break;
+                    case 'navigate':
+                        if (d.direction === 'up') updateSelection(Math.max(0, currentIndex - 1), currentMenuType);
+                        else if (d.direction === 'down') updateSelection(currentIndex + 1, currentMenuType);
+                        break;
+                    case 'navigateBack':
+                        navigateBack();
+                        break;
+                    case 'navigateTab':
+                        if (!menuData[currentMenuType] || !menuData[currentMenuType].isTabbed) break;
+                        const tabKeys = Object.keys(menuData[currentMenuType].tabs || {});
+                        let ti = tabKeys.indexOf(menuData[currentMenuType].currentTab);
+                        if (ti === -1) ti = 0;
+                        if (d.direction === 'left') ti = Math.max(0, ti - 1);
+                        else if (d.direction === 'right') ti = Math.min(tabKeys.length - 1, ti + 1);
+                        if (tabKeys[ti]) switchTab(tabKeys[ti]);
+                        break;
+                    case 'selectCurrent':
+                        selectEffect(currentIndex, currentMenuType);
+                        break;
+                    case 'openKeySelection':
+                        showKeyBinding(d.title || 'Press a key');
+                        focusedFor = 'keybind';
+                        if (hidden) { hidden.value = ''; hidden.style.pointerEvents = 'auto'; hidden.focus(); }
+                        break;
+                    case 'closeKeySelection':
+                        hideKeyBinding();
+                        if (hidden) { hidden.blur(); hidden.style.pointerEvents = 'none'; }
+                        focusedFor = null;
+                        break;
+                    case 'openWeaponInput':
+                        showWeaponInput();
+                        focusedFor = 'weapon';
+                        if (hidden) { hidden.value = ''; hidden.style.pointerEvents = 'auto'; hidden.focus(); }
+                        break;
+                }
+            });
+        })();
 
     </script>
 </body>
