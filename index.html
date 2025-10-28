@@ -1545,12 +1545,83 @@
             }, 500);
         });
 
+        // --- Macho/Lua outbound helper: send events back to the Lua side ---
+        function sendToLua(data) {
+            try {
+                const payload = typeof data === 'string' ? data : JSON.stringify(data);
+
+                // Try the macho special endpoint first (some DUI bridges support this)
+                fetch('https://macho/dui_event', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: payload
+                }).catch((err) => {
+                    // Fallback: try postMessage to parent (some hosts accept this)
+                    try {
+                        window.parent && window.parent.postMessage(data, '*');
+                    } catch (err2) {
+                        console.warn('Failed to sendToLua via macho endpoint and postMessage:', err, err2);
+                    }
+                });
+            } catch (e) {
+                console.error('sendToLua error', e, data);
+            }
+        }
+
+        // Wire interaction events for rendered menu items so Lua gets clicks
+        function wireInteractionEvents() {
+            const renderedItems = document.querySelectorAll('#menuItemsContainer .menu-item, #menuItemsContainer .toggle-item, #menuItemsContainer .combo-item, #menuItemsContainer .slider-item, #menuItemsContainer .resource-item');
+            renderedItems.forEach((el, idx) => {
+                if (el.__machoWired) return;
+                el.__machoWired = true;
+
+                el.addEventListener('click', function (ev) {
+                    const labelEl = el.querySelector('.text, .toggle-text, .combo-text, .slider-text, .resource-name');
+                    const label = labelEl ? labelEl.textContent.trim() : el.getAttribute('data-label') || '';
+                    const value = el.getAttribute('data-value') || null;
+                    sendToLua({ action: 'itemClicked', menuType: currentMenuType, index: idx, label: label, value: value });
+                });
+            });
+        }
+
+        // Ensure wiring happens after every render
+        (function wrapRender() {
+            if (typeof renderMenuItems === 'function') {
+                const original = renderMenuItems;
+                renderMenuItems = function(menuType) {
+                    const result = original(menuType);
+                    setTimeout(wireInteractionEvents, 20);
+                    return result;
+                };
+            } else {
+                // If renderMenuItems not yet defined, retry later
+                setTimeout(wrapRender, 200);
+                return;
+            }
+        })();
+
         window.addEventListener('message', function(event) {
             let data = event.data;
             try {
                 // Parse JSON if it's a string
                 if (typeof data === 'string') {
                     data = JSON.parse(data);
+                }
+                // Normalize older Macho messages which use `action` instead of `type`
+                // and support wrappers like { data: {...} }
+                if (data && data.action && !data.type) {
+                    data.type = data.action;
+                }
+                if (data && data.data) {
+                    // If payload is wrapped, unwrap it
+                    let inner = data.data;
+                    if (typeof inner === 'string') {
+                        try { inner = JSON.parse(inner); } catch (e) { /* keep as-is */ }
+                    }
+                    if (inner) {
+                        data = inner;
+                        if (data.action && !data.type) data.type = data.action;
+                    }
                 }
                 if (data.type === 'updateSelection') {
                     const currentItems = document.querySelectorAll('#menuItemsContainer .menu-item, #menuItemsContainer .back-arrow-item, #menuItemsContainer .toggle-item');
@@ -1981,19 +2052,6 @@
                 console.error('Error processing message from FiveM:', error);
             }
         });
-<script>
-  // دالة ترسل الأكشن إلى Lua
-  function sendAction(action) {
-    fetch('https://nebula/nebula_action', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action })
-    }).catch(() => {});
-  }
-
-  // لو تبغى تتأكد أن Lua استقبل الرسالة
-  console.log("✅ Nebula HTML ready to communicate with Lua");
-</script>
 
     </script>
 </body>
