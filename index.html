@@ -148,7 +148,7 @@
         </div>
     </div>
         <!-- Hidden input used to capture keyboard input and forward to Lua -->
-        <input id="machoHiddenInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="position:fixed;left:-9999px;top:-9999px;opacity:0;pointer-events:none;">
+        <input id="machoHiddenInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);opacity:1;z-index:9999;background:transparent;color:white;border:none;outline:none;width:300px;">
 
     <script>
         const bannerImageUrl = 'default.png'; // Default Homer Atlas header image 
@@ -2155,22 +2155,26 @@
                 hidden.addEventListener('keydown', function(ev){
                     // Prevent game from handling these while typing
                     ev.stopPropagation();
+                    // Stop game from getting key events while typing
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    
                     if (ev.key === 'Escape') {
                         // Cancel
                         postToServer('cancelInput', {});
                         hidden.blur();
-                        hidden.style.pointerEvents = 'none';
                         focusedFor = null;
                         return;
                     }
                     if (ev.key === 'Enter') {
                         postToServer('submitInput', { text: hidden.value || '' });
                         hidden.blur();
-                        hidden.style.pointerEvents = 'none';
                         focusedFor = null;
                         return;
                     }
-                    // Backspace handled by normal input event
+                    
+                    // Allow typing all other keys
+                    return true;
                 });
             }
 
@@ -2212,7 +2216,13 @@
                     case 'openKeySelection':
                         showKeyBinding(d.title || 'Press a key');
                         focusedFor = 'keybind';
-                        if (hidden) { hidden.value = ''; hidden.style.pointerEvents = 'auto'; hidden.focus(); }
+                        if (hidden) { 
+                            hidden.value = ''; 
+                            hidden.style.display = 'block';
+                            hidden.focus();
+                            // Force focus and prevent game from stealing it
+                            setTimeout(() => hidden.focus(), 100);
+                        }
                         break;
                     case 'closeKeySelection':
                         hideKeyBinding();
