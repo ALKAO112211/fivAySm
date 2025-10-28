@@ -1315,12 +1315,22 @@
                 currentMenuType = 'main';
                 renderMenuItems(currentMenuType);
                 
+                // Ensure we select the self option when going back to main menu
                 const returnIndex = menuData.main.items.findIndex(item => item.action === previousMenu);
                 updateSelection(returnIndex >= 0 ? returnIndex : 0, currentMenuType);
-
+                
                 const menuItems = document.getElementById('menuItemsContainer');
                 if (menuItems) menuItems.scrollTop = 0;
                 updateScrollbarIndicator();
+                
+                // Send notification to Lua
+                if (typeof GetParentResourceName !== 'undefined') {
+                    fetch(`https://${GetParentResourceName()}/menuNavigated`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                        body: JSON.stringify({ from: previousMenu, to: 'main' })
+                    });
+                }
 
             } else if (currentMenuType === 'resources') {
                 // Go back to settings menu, server tab
