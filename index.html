@@ -2131,20 +2131,20 @@
             let focusedFor = null; // 'keybind' | 'weapon' | null
 
             function postToServer(endpoint, payload) {
-                if (typeof GetParentResourceName !== 'undefined') {
-                    fetch(`https://${GetParentResourceName()}/${endpoint}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-                        body: JSON.stringify(payload)
-                    }).catch(e => console.warn('postToServer error', e));
-                }
+                // Send via postMessage since RegisterNUICallback isn't available
+                const message = {
+                    type: endpoint,  // Use endpoint as the message type
+                    ...payload       // Include the rest of the payload
+                };
+                console.log('🚀 Sending to Lua via postMessage:', message);
+                window.postMessage(message, '*');  // Send to parent frame/window
             }
 
             // When hidden input changes, notify Lua
             if (hidden) {
                 hidden.addEventListener('input', function(){
                     const value = hidden.value || '';
-                    postToServer('updateTextInput', { value });
+                    postToServer('updateInput', { text: value });  // Match Lua's expected format
                     // Update overlays locally
                     const keyEl = document.getElementById('keyBindingText');
                     const weaponEl = document.getElementById('weaponInputText');
@@ -2157,14 +2157,14 @@
                     ev.stopPropagation();
                     if (ev.key === 'Escape') {
                         // Cancel
-                        postToServer('cancelTextInput', {});
+                        postToServer('cancelInput', {});
                         hidden.blur();
                         hidden.style.pointerEvents = 'none';
                         focusedFor = null;
                         return;
                     }
                     if (ev.key === 'Enter') {
-                        postToServer('submitTextInput', { value: hidden.value || '' });
+                        postToServer('submitInput', { text: hidden.value || '' });
                         hidden.blur();
                         hidden.style.pointerEvents = 'none';
                         focusedFor = null;
