@@ -2162,12 +2162,14 @@
                     if (ev.key === 'Escape') {
                         // Cancel
                         postToServer('cancelInput', {});
+                        window.postMessage({ type: 'stopTyping' }, '*');
                         hidden.blur();
                         focusedFor = null;
                         return;
                     }
                     if (ev.key === 'Enter') {
                         postToServer('submitInput', { text: hidden.value || '' });
+                        window.postMessage({ type: 'stopTyping' }, '*');
                         hidden.blur();
                         focusedFor = null;
                         return;
@@ -2220,6 +2222,8 @@
                             hidden.value = ''; 
                             hidden.style.display = 'block';
                             hidden.focus();
+                            // Tell Lua we're starting to type
+                            window.postMessage({ type: 'startTyping' }, '*');
                             // Force focus and prevent game from stealing it
                             setTimeout(() => hidden.focus(), 100);
                         }
