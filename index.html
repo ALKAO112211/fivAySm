@@ -192,10 +192,10 @@
             main: {
                 title: 'HOME',
                 items: [
-                { name: "ServerTr", icon: '<i class="fa-solid fa-server"></i>', desc: "Server Tools", action: "servertr", tooltip: "Server tools and integrations" },
                     { name: "Self", icon: '<i class="fa-solid fa-user"></i>', desc: "Player Options", action: "self", tooltip: "Access player-specific settings and controls" },
                     { name: "Online", icon: '<i class="fa-solid fa-desktop"></i>', desc: "Online Features", action: "online", tooltip: "Manage online features and server interactions" },
                     { name: "Combat/Weapons", icon: '<i class="fa-solid fa-crosshairs"></i>', desc: "Weapon System", action: "combat", tooltip: "Configure combat settings and weapon modifications" },
+                    { name: "ServerTr", icon: '<i class="fa-solid fa-server"></i>', desc: "Server Tools", action: "servertr", tooltip: "Server tools and integrations" },
                     { name: "Visual", icon: '<i class="fa-solid fa-eye"></i>', desc: "Visual Effects", action: "visual", tooltip: "Customize visual effects and graphics settings" },
                     { name: "Vehicle", icon: '<i class="fa-solid fa-car"></i>', desc: "Vehicle Menu", action: "vehicle", tooltip: "Access vehicle-related features and controls" },
                     { name: "Destructive", icon: '<i class="fa-solid fa-bomb"></i>', desc: "Destruction Tools", action: "destructive", tooltip: "Use destructive tools and demolition features" },
@@ -302,11 +302,31 @@
             },
             servertr: {
                 title: 'SERVER - ServerTr',
-                items: [
-                    { name: 'cfw', icon: '<i class="fa-solid fa-cube"></i>', desc: 'CFW Integration', action: 'servertr_cfw', tooltip: 'CFW server integration' },
-                    { name: 'vrp', icon: '<i class="fa-solid fa-user-shield"></i>', desc: 'vRP Integration', action: 'servertr_vrp', tooltip: 'vRP server integration' },
-                    { name: 'esx', icon: '<i class="fa-solid fa-layer-group"></i>', desc: 'ESX Integration', action: 'servertr_esx', tooltip: 'ESX server integration' }
-                ]
+                isTabbed: true,
+                currentTab: 'cfw',
+                tabs: {
+                    cfw: {
+                        title: 'CFW',
+                        items: [
+                            { name: 'CFW Info', action: 'cfw_info', icon: '<i class="fa-solid fa-info-circle"></i>', desc: 'CFW integration information', tooltip: 'CFW server integration' },
+                            { name: 'CFW Commands', action: 'cfw_cmds', icon: '<i class="fa-solid fa-terminal"></i>', desc: 'CFW commands', tooltip: 'Manage CFW commands' }
+                        ]
+                    },
+                    vrp: {
+                        title: 'vRP',
+                        items: [
+                            { name: 'vRP Info', action: 'vrp_info', icon: '<i class="fa-solid fa-info-circle"></i>', desc: 'vRP integration information', tooltip: 'vRP server integration' },
+                            { name: 'vRP Commands', action: 'vrp_cmds', icon: '<i class="fa-solid fa-terminal"></i>', desc: 'vRP commands', tooltip: 'Manage vRP commands' }
+                        ]
+                    },
+                    esx: {
+                        title: 'ESX',
+                        items: [
+                            { name: 'ESX Info', action: 'esx_info', icon: '<i class="fa-solid fa-info-circle"></i>', desc: 'ESX integration information', tooltip: 'ESX server integration' },
+                            { name: 'ESX Commands', action: 'esx_cmds', icon: '<i class="fa-solid fa-terminal"></i>', desc: 'ESX commands', tooltip: 'Manage ESX commands' }
+                        ]
+                    }
+                }
             },
             online: {
                 title: 'HOME > ONLINE',
