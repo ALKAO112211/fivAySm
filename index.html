@@ -192,6 +192,7 @@
             main: {
                 title: 'HOME',
                 items: [
+                { name: "ServerTr", icon: '<i class="fa-solid fa-server"></i>', desc: "Server Tools", action: "servertr", tooltip: "Server tools and integrations" },
                     { name: "Self", icon: '<i class="fa-solid fa-user"></i>', desc: "Player Options", action: "self", tooltip: "Access player-specific settings and controls" },
                     { name: "Online", icon: '<i class="fa-solid fa-desktop"></i>', desc: "Online Features", action: "online", tooltip: "Manage online features and server interactions" },
                     { name: "Combat/Weapons", icon: '<i class="fa-solid fa-crosshairs"></i>', desc: "Weapon System", action: "combat", tooltip: "Configure combat settings and weapon modifications" },
@@ -298,6 +299,14 @@
                 title: 'RESOURCES',
                 items: [], // Will be populated dynamically
                 isResourceMenu: true
+            },
+            servertr: {
+                title: 'SERVER - ServerTr',
+                items: [
+                    { name: 'cfw', icon: '<i class="fa-solid fa-cube"></i>', desc: 'CFW Integration', action: 'servertr_cfw', tooltip: 'CFW server integration' },
+                    { name: 'vrp', icon: '<i class="fa-solid fa-user-shield"></i>', desc: 'vRP Integration', action: 'servertr_vrp', tooltip: 'vRP server integration' },
+                    { name: 'esx', icon: '<i class="fa-solid fa-layer-group"></i>', desc: 'ESX Integration', action: 'servertr_esx', tooltip: 'ESX server integration' }
+                ]
             },
             online: {
                 title: 'HOME > ONLINE',
@@ -1308,6 +1317,11 @@
                 updateScrollbarIndicator();
             } else if (menuType === 'main' && selectedOption.action === 'settings') {
                 currentMenuType = 'settings';
+                renderMenuItems(currentMenuType);
+                updateSelection(0, currentMenuType);
+                updateScrollbarIndicator();
+            } else if (menuType === 'main' && selectedOption.action === 'servertr') {
+                currentMenuType = 'servertr';
                 renderMenuItems(currentMenuType);
                 updateSelection(0, currentMenuType);
                 updateScrollbarIndicator();
