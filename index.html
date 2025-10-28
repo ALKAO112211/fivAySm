@@ -1579,7 +1579,24 @@
                     const labelEl = el.querySelector('.text, .toggle-text, .combo-text, .slider-text, .resource-name');
                     const label = labelEl ? labelEl.textContent.trim() : el.getAttribute('data-label') || '';
                     const value = el.getAttribute('data-value') || null;
-                    sendToLua({ action: 'itemClicked', menuType: currentMenuType, index: idx, label: label, value: value });
+                    const payload = { action: 'itemClicked', menuType: currentMenuType, index: idx, label: label, value: value };
+                    // Prefer the resource POST endpoint when available (FiveM/Macho style)
+                    if (typeof GetParentResourceName !== 'undefined') {
+                        try {
+                            fetch(`https://${GetParentResourceName()}/menuSelected`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                                body: JSON.stringify(payload)
+                            }).catch(e => {
+                                // fallback to sendToLua
+                                sendToLua(payload);
+                            });
+                        } catch (e) {
+                            sendToLua(payload);
+                        }
+                    } else {
+                        sendToLua(payload);
+                    }
                 });
             });
         }
@@ -1986,6 +2003,28 @@
                     showKeyBinding(data.message);
                 } else if (data.type === 'showWeaponInput') {
                     showWeaponInput();
+                } else if (data.type === 'updateTextInput') {
+                    // General text input updates from Lua (typing)
+                    if (data.value !== undefined) {
+                        // Update weapon input overlay if visible
+                        updateWeaponInput(data.value);
+                        // Also update key binding field if visible
+                        const keyEl = document.getElementById('keyBindingText');
+                        if (keyEl && document.getElementById('keyBindingOverlay').style.display === 'flex') {
+                            keyEl.textContent = data.value;
+                        }
+                    }
+                } else if (data.type === 'submitTextInput') {
+                    // Lua finished text input
+                    hideWeaponInput();
+                    hideKeyBinding();
+                    if (data.value) {
+                        showNotification('Input Submitted', String(data.value), '<i class="fa-solid fa-check"></i>');
+                    }
+                } else if (data.type === 'cancelTextInput' || data.type === 'closeTextInput') {
+                    // Cancel or close text input overlays
+                    hideWeaponInput();
+                    hideKeyBinding();
                 } else if (data.type === 'weaponInputUpdate') {
                     updateWeaponInput(data.text);
                     console.log('🔫 Received weapon input update:', data.text);
