@@ -1,3 +1,80 @@
+        #cursor {
+            display: inline-block;
+            width: 2px;
+            height: 20px;
+            background-color: white;
+            margin-left: 4px;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        .key-text {
+            color: white;
+            font-size: 18px;
+            display: inline-block;
+            min-width: 20px;
+            vertical-align: middle;
+        }
+        // إضافة مستمع للمفاتيح على مستوى الصفحة
+        document.addEventListener('keydown', function(event) {
+            // تحقق إذا كان مربع الكتابة مفتوح
+            const keyBindingOverlay = document.getElementById('keyBindingOverlay');
+            const keyBindingText = document.getElementById('keyBindingText');
+            
+            if (keyBindingOverlay && keyBindingOverlay.style.display === 'flex' && keyBindingText) {
+                event.preventDefault();  // منع العبة من استقبال المفتاح
+                event.stopPropagation();
+                
+                if (event.key === 'Escape') {
+                    // إغلاق مربع الكتابة
+                    window.postMessage({ 
+                        type: 'submitInput',
+                        text: 'cancelled'
+                    }, '*');
+                    hideKeyBinding();
+                    return;
+                }
+                
+                if (event.key === 'Enter') {
+                    // إرسال النص المكتوب
+                    window.postMessage({ 
+                        type: 'submitInput',
+                        text: keyBindingText.textContent
+                    }, '*');
+                    hideKeyBinding();
+                    return;
+                }
+
+                // إظهار المفتاح في المربع
+                if (event.key.length === 1) {
+                    keyBindingText.textContent = event.key.toUpperCase();
+                    // إرسال التحديث إلى Lua
+                    window.postMessage({ 
+                        type: 'updateInput',
+                        text: event.key.toUpperCase()
+                    }, '*');
+                } else {
+                    // للمفاتيح الخاصة مثل F1, Delete, إلخ
+                    keyBindingText.textContent = event.code;
+                    window.postMessage({ 
+                        type: 'updateInput',
+                        text: event.code
+                    }, '*');
+                }
+
+                // تحريك المؤشر
+                const cursor = document.getElementById('cursor');
+                if (cursor) {
+                    cursor.style.display = 'inline-block';
+                    setTimeout(() => { cursor.style.display = 'none'; }, 500);
+                }
+            }
+        });
 <!DOCTYPE html>
 <html lang="en">
 <head>
