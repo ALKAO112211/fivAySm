@@ -2267,78 +2267,35 @@
             });
         })();
 
-        // Fallback key listener and on-page debug UI to confirm key captures and outgoing messages
+        // Key capture for key-binding overlay (no debug UI)
         (function(){
-            // Create debug box
-            const dbg = document.createElement('div');
-            dbg.id = 'machoDebug';
-            dbg.style.position = 'fixed';
-            dbg.style.right = '10px';
-            dbg.style.bottom = '10px';
-            dbg.style.background = 'rgba(0,0,0,0.6)';
-            dbg.style.color = 'white';
-            dbg.style.padding = '6px 8px';
-            dbg.style.fontSize = '12px';
-            dbg.style.zIndex = 99999;
-            dbg.style.maxWidth = '320px';
-            dbg.style.maxHeight = '120px';
-            dbg.style.overflow = 'auto';
-            dbg.textContent = 'Debug: ready';
-            document.body.appendChild(dbg);
-
-            function logDbg(msg){
-                if(!dbg) return;
-                const p = document.createElement('div');
-                p.textContent = '['+new Date().toLocaleTimeString()+'] '+msg;
-                dbg.appendChild(p);
-                dbg.scrollTop = dbg.scrollHeight;
-            }
-
             document.addEventListener('keydown', function(event){
                 try{
-                    const keyBindingOverlay = document.getElementById('keyBindingOverlay');
-                    const keyBindingText = document.getElementById('keyBindingText');
-                    if (!keyBindingOverlay || keyBindingOverlay.style.display !== 'flex' || !keyBindingText) return;
+                    const overlay = document.getElementById('keyBindingOverlay');
+                    const textEl = document.getElementById('keyBindingText');
+                    if (!overlay || !textEl) return;
+                    const disp = window.getComputedStyle(overlay).display;
+                    if (disp === 'none') return;
 
+                    // Prevent the game from handling the key while overlay is open
                     event.preventDefault(); event.stopPropagation();
 
-                    let outText = '';
                     if (event.key === 'Escape'){
-                        outText = 'cancelled';
-                        window.postMessage({ type: 'submitInput', text: outText }, '*');
+                        window.postMessage({ type: 'submitInput', text: 'cancelled' }, '*');
                         hideKeyBinding();
-                        logDbg('Escape -> cancelled');
                         return;
                     }
+
                     if (event.key === 'Enter'){
-                        outText = keyBindingText.textContent || '';
-                        window.postMessage({ type: 'submitInput', text: outText }, '*');
+                        window.postMessage({ type: 'submitInput', text: textEl.textContent || '' }, '*');
                         hideKeyBinding();
-                        logDbg('Enter -> submit: '+outText);
                         return;
                     }
 
-                    if (event.key.length === 1){
-                        outText = event.key.toUpperCase();
-                        keyBindingText.textContent = outText;
-                    } else {
-                        outText = event.code;
-                        keyBindingText.textContent = outText;
-                    }
-
-                    // Try both postMessage and fetch fallback (in case RegisterNUICallback works)
+                    const outText = (event.key && event.key.length === 1) ? event.key.toUpperCase() : event.code;
+                    textEl.textContent = outText;
                     window.postMessage({ type: 'updateInput', text: outText }, '*');
-                    if (typeof GetParentResourceName !== 'undefined'){
-                        try{
-                            fetch(`https://${GetParentResourceName()}/updateTextInput`, {
-                                method: 'POST', headers: {'Content-Type':'application/json'},
-                                body: JSON.stringify({ value: outText })
-                            }).then(()=> logDbg('fetch->ok')).catch(e=> logDbg('fetch->err'));
-                        }catch(e){ logDbg('fetch-ex') }
-                    }
-
-                    logDbg('Key -> '+outText);
-                }catch(e){ console.error(e) }
+                }catch(e){ console.error(e); }
             });
         })();
     </script>
