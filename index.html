@@ -1031,6 +1031,12 @@
                     }, 50);
                 }
             }
+            else if (currentMenuType === 'servertr' && menuData.servertr.tabs[tabKey]) {
+                menuData.servertr.currentTab = tabKey;
+                renderMenuItems(currentMenuType);
+                updateSelection(0, currentMenuType);
+                updateScrollbarIndicator();
+            }
         }
 
         function populateResources(resources) {
@@ -1371,7 +1377,7 @@
 
 
         function navigateBack() {
-            if (currentMenuType === 'self' || currentMenuType === 'combat' || currentMenuType === 'settings' || currentMenuType === 'online' || currentMenuType === 'misc') {
+            if (currentMenuType === 'self' || currentMenuType === 'combat' || currentMenuType === 'settings' || currentMenuType === 'online' || currentMenuType === 'misc' || currentMenuType === 'servertr') {
                 const previousMenu = currentMenuType;
                 currentMenuType = 'main';
                 renderMenuItems(currentMenuType);
@@ -1808,7 +1814,7 @@
                         showNotification('Teleport Failed', 'No waypoint set on map!', '<i class="fa-solid fa-exclamation-triangle"></i>');
                     }
                 } else if (data.type === 'switchTab') {
-                    if ((currentMenuType === 'settings' || currentMenuType === 'self' || currentMenuType === 'combat' || currentMenuType === 'online') && data.tab) {
+                    if ((currentMenuType === 'settings' || currentMenuType === 'self' || currentMenuType === 'combat' || currentMenuType === 'online' || currentMenuType === 'servertr') && data.tab) {
                         switchTab(data.tab);
                     }
                 } else if (data.type === 'enter') {
