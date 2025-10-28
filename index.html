@@ -974,13 +974,21 @@
                 item.classList.remove('selected');
             });
             
-            currentIndex = index;
+            // Clamp the requested index into the valid range so navigation can't get stuck
+            let clampedIndex = index;
+            if (totalItems <= 0) {
+                clampedIndex = 0;
+            } else {
+                clampedIndex = Math.max(0, Math.min(index, totalItems - 1));
+            }
 
-            if (totalItems > 0 && index >= 0 && index < totalItems) {
-                currentItems[index].classList.add('selected');
+            currentIndex = clampedIndex;
+
+            if (totalItems > 0 && clampedIndex >= 0 && clampedIndex < totalItems) {
+                currentItems[clampedIndex].classList.add('selected');
                 
                 // Scroll to selected item if needed
-                const selectedElement = currentItems[index];
+                const selectedElement = currentItems[clampedIndex];
                 const menuItems = document.getElementById('menuItemsContainer');
                 const itemTop = selectedElement.offsetTop;
                 const itemHeight = selectedElement.offsetHeight;
@@ -995,8 +1003,8 @@
             }
 
             if (highlightBar) {
-                if (totalItems > 0 && index >= 0 && index < totalItems) {
-                    const selectedElement = currentItems[index]; 
+                if (totalItems > 0 && clampedIndex >= 0 && clampedIndex < totalItems) {
+                    const selectedElement = currentItems[clampedIndex]; 
                     const topPosition = selectedElement.offsetTop; 
                     highlightBar.style.top = `${topPosition}px`; 
                     highlightBar.style.display = 'block';
@@ -1011,7 +1019,7 @@
             // Update tooltip for current selection
             updateTooltipForCurrentSelection();
             
-            counterElement.textContent = `${(totalItems > 0 && index >= 0) ? index + 1 : 0}/${totalItems}`;
+            counterElement.textContent = `${(totalItems > 0 && clampedIndex >= 0) ? clampedIndex + 1 : 0}/${totalItems}`;
         }
 
         function switchTab(tabKey) {
