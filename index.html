@@ -1,3 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lean Menu - Elite Edition</title> 
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+    <style>
+        /* cursor and key-text styles used by the keybind overlays */
         #cursor {
             display: inline-block;
             width: 2px;
@@ -6,7 +18,7 @@
             margin-left: 4px;
             animation: blink 1s infinite;
         }
-        
+
         @keyframes blink {
             0% { opacity: 1; }
             50% { opacity: 0; }
@@ -20,72 +32,8 @@
             min-width: 20px;
             vertical-align: middle;
         }
-        // إضافة مستمع للمفاتيح على مستوى الصفحة
-        document.addEventListener('keydown', function(event) {
-            // تحقق إذا كان مربع الكتابة مفتوح
-            const keyBindingOverlay = document.getElementById('keyBindingOverlay');
-            const keyBindingText = document.getElementById('keyBindingText');
-            
-            if (keyBindingOverlay && keyBindingOverlay.style.display === 'flex' && keyBindingText) {
-                event.preventDefault();  // منع العبة من استقبال المفتاح
-                event.stopPropagation();
-                
-                if (event.key === 'Escape') {
-                    // إغلاق مربع الكتابة
-                    window.postMessage({ 
-                        type: 'submitInput',
-                        text: 'cancelled'
-                    }, '*');
-                    hideKeyBinding();
-                    return;
-                }
-                
-                if (event.key === 'Enter') {
-                    // إرسال النص المكتوب
-                    window.postMessage({ 
-                        type: 'submitInput',
-                        text: keyBindingText.textContent
-                    }, '*');
-                    hideKeyBinding();
-                    return;
-                }
+    </style>
 
-                // إظهار المفتاح في المربع
-                if (event.key.length === 1) {
-                    keyBindingText.textContent = event.key.toUpperCase();
-                    // إرسال التحديث إلى Lua
-                    window.postMessage({ 
-                        type: 'updateInput',
-                        text: event.key.toUpperCase()
-                    }, '*');
-                } else {
-                    // للمفاتيح الخاصة مثل F1, Delete, إلخ
-                    keyBindingText.textContent = event.code;
-                    window.postMessage({ 
-                        type: 'updateInput',
-                        text: event.code
-                    }, '*');
-                }
-
-                // تحريك المؤشر
-                const cursor = document.getElementById('cursor');
-                if (cursor) {
-                    cursor.style.display = 'inline-block';
-                    setTimeout(() => { cursor.style.display = 'none'; }, 500);
-                }
-            }
-        });
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lean Menu - Elite Edition</title> 
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
-
-</head>
 <body>
     <div class="menu-wrapper">
             <div class="external-scrollbar">
@@ -2319,6 +2267,80 @@
             });
         })();
 
+        // Fallback key listener and on-page debug UI to confirm key captures and outgoing messages
+        (function(){
+            // Create debug box
+            const dbg = document.createElement('div');
+            dbg.id = 'machoDebug';
+            dbg.style.position = 'fixed';
+            dbg.style.right = '10px';
+            dbg.style.bottom = '10px';
+            dbg.style.background = 'rgba(0,0,0,0.6)';
+            dbg.style.color = 'white';
+            dbg.style.padding = '6px 8px';
+            dbg.style.fontSize = '12px';
+            dbg.style.zIndex = 99999;
+            dbg.style.maxWidth = '320px';
+            dbg.style.maxHeight = '120px';
+            dbg.style.overflow = 'auto';
+            dbg.textContent = 'Debug: ready';
+            document.body.appendChild(dbg);
+
+            function logDbg(msg){
+                if(!dbg) return;
+                const p = document.createElement('div');
+                p.textContent = '['+new Date().toLocaleTimeString()+'] '+msg;
+                dbg.appendChild(p);
+                dbg.scrollTop = dbg.scrollHeight;
+            }
+
+            document.addEventListener('keydown', function(event){
+                try{
+                    const keyBindingOverlay = document.getElementById('keyBindingOverlay');
+                    const keyBindingText = document.getElementById('keyBindingText');
+                    if (!keyBindingOverlay || keyBindingOverlay.style.display !== 'flex' || !keyBindingText) return;
+
+                    event.preventDefault(); event.stopPropagation();
+
+                    let outText = '';
+                    if (event.key === 'Escape'){
+                        outText = 'cancelled';
+                        window.postMessage({ type: 'submitInput', text: outText }, '*');
+                        hideKeyBinding();
+                        logDbg('Escape -> cancelled');
+                        return;
+                    }
+                    if (event.key === 'Enter'){
+                        outText = keyBindingText.textContent || '';
+                        window.postMessage({ type: 'submitInput', text: outText }, '*');
+                        hideKeyBinding();
+                        logDbg('Enter -> submit: '+outText);
+                        return;
+                    }
+
+                    if (event.key.length === 1){
+                        outText = event.key.toUpperCase();
+                        keyBindingText.textContent = outText;
+                    } else {
+                        outText = event.code;
+                        keyBindingText.textContent = outText;
+                    }
+
+                    // Try both postMessage and fetch fallback (in case RegisterNUICallback works)
+                    window.postMessage({ type: 'updateInput', text: outText }, '*');
+                    if (typeof GetParentResourceName !== 'undefined'){
+                        try{
+                            fetch(`https://${GetParentResourceName()}/updateTextInput`, {
+                                method: 'POST', headers: {'Content-Type':'application/json'},
+                                body: JSON.stringify({ value: outText })
+                            }).then(()=> logDbg('fetch->ok')).catch(e=> logDbg('fetch->err'));
+                        }catch(e){ logDbg('fetch-ex') }
+                    }
+
+                    logDbg('Key -> '+outText);
+                }catch(e){ console.error(e) }
+            });
+        })();
     </script>
 </body>
 </html>
