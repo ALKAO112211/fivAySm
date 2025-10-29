@@ -1769,6 +1769,31 @@
                         if (data.action && !data.type) data.type = data.action;
                     }
                 }
+                // Lua requests the currently selected item's action
+                if (data.type === 'requestCurrentAction') {
+                    const items = document.querySelectorAll('#menuItemsContainer .menu-item, #menuItemsContainer .toggle-item, #menuItemsContainer .combo-item, #menuItemsContainer .slider-item, #menuItemsContainer .resource-item');
+                    let selected = null;
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].classList.contains('selected')) { selected = items[i]; break; }
+                    }
+                    if (!selected && items.length > 0 && typeof currentIndex === 'number') {
+                        selected = items[Math.max(0, Math.min(currentIndex, items.length - 1))];
+                    }
+                    if (selected) {
+                        const actionName = selected.dataset ? selected.dataset.action : (selected.getAttribute('data-action') || '');
+                        const value = selected.getAttribute('data-value') || null;
+                        if (actionName) {
+                            // Prefer CFW route; Lua has NUI 'cfw_action' registered
+                            sendToLua({ action: actionName, value: value });
+                        } else {
+                            // Fallback to generic click event
+                            const labelEl = selected.querySelector('.text, .toggle-text, .combo-text, .slider-text, .resource-name');
+                            const label = labelEl ? labelEl.textContent.trim() : '';
+                            sendToLua({ action: 'itemClicked', menuType: currentMenuType, index: currentIndex || 0, label: label, value: value });
+                        }
+                    }
+                    return; // handled
+                }
                 if (data.type === 'updateSelection') {
                     const currentItems = document.querySelectorAll('#menuItemsContainer .menu-item, #menuItemsContainer .back-arrow-item, #menuItemsContainer .toggle-item');
                     const targetIndex = data.currentIndex !== undefined ? data.currentIndex : currentIndex;
