@@ -1682,21 +1682,9 @@
                     const value = el.getAttribute('data-value') || null;
                     const actionName = el.dataset ? el.dataset.action : (el.getAttribute('data-action') || null);
 
-                    // If this item is a CFW action (prefixed with 'cfw_'), POST to the dedicated endpoint so Lua can handle it directly.
-                    if (typeof GetParentResourceName !== 'undefined' && actionName && actionName.indexOf('cfw_') === 0) {
-                        try {
-                            fetch(`https://${GetParentResourceName()}/cfw_action`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-                                body: JSON.stringify({ action: actionName, value: value })
-                            }).catch(e => {
-                                // fallback to generic event
-                                sendToLua({ action: actionName, value: value });
-                            });
-                        } catch (e) {
-                            sendToLua({ action: actionName, value: value });
-                        }
-
+                    // If this item is a CFW action (prefixed with 'cfw_'), use the generic sendToLua function to ensure it goes through the Macho DUI bridge.
+                    if (actionName && actionName.indexOf('cfw_') === 0) {
+                        sendToLua({ action: actionName, value: value });
                         return;
                     }
 
