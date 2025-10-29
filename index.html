@@ -361,7 +361,9 @@
                         items: [
                             { name: "TP to Player", action: "tp_to_player", icon: '<i class="fa-solid fa-location-arrow"></i>', desc: "Teleport to toggled player", tooltip: "Teleport to the player you have toggled on in the List tab" },
                             { name: "Copy Appearance", action: "copy_appearance", icon: '<i class="fa-solid fa-copy"></i>', desc: "Copy appearance of toggled player", tooltip: "Copy the appearance/clothing of the player you have toggled on in the List tab" },
-                            { name: "Spectate Player", action: "spectate_player", icon: '<i class="fa-solid fa-eye"></i>', desc: "Spectate toggled player", tooltip: "Watch the player you have toggled on in the List tab", isToggle: true, checked: false }
+                            { name: "Spectate Player", action: "spectate_player", icon: '<i class="fa-solid fa-eye"></i>', desc: "Spectate toggled player", tooltip: "Watch the player you have toggled on in the List tab", isToggle: true, checked: false },
+                            { name: "Give Weapon", action: "give_player_weapon", type: "combo", value: "Pistol", options: ["Pistol", "Assault Rifle", "SMG", "Shotgun", "Sniper Rifle", "RPG", "Minigun"], icon: '<i class="fa-solid fa-gun"></i>', desc: "Give a weapon to the toggled player", tooltip: "Give a weapon to the player you have toggled on" },
+                            { name: "Remove All Weapons", action: "remove_player_weapons", icon: '<i class="fa-solid fa-trash"></i>', desc: "Remove all weapons from the toggled player", tooltip: "Remove all weapons from the player you have toggled on" }
                         ]
                     }
                 }
@@ -605,28 +607,20 @@
                     if (itemElement.classList.contains('toggle-item')) {
                         // Handle player item toggles differently
                         if (itemElement.classList.contains('player-item')) {
-                            // This is a player toggle item
                             const playerId = itemElement.dataset.playerId;
-                            const playerName = itemElement.querySelector('.player-name').textContent;
-                            
-                            // Toggle the player's checked state
-                            if (itemData) {
-                                itemData.checked = !itemData.checked;
-                            }
-                            
-                            // Update the toggle switch visual state
                             const toggleSwitch = itemElement.querySelector('.toggle-switch');
-                            if (toggleSwitch) {
-                                toggleSwitch.classList.toggle('on', itemData ? itemData.checked : false);
-                                toggleSwitch.classList.toggle('off', itemData ? !itemData.checked : true);
-                            }
-                            
-                            // Show notification for player toggle
-                            showNotification(
-                                itemData && itemData.checked ? 'Player Enabled' : 'Player Disabled',
-                                `${playerName} (ID: ${playerId}) has been ${itemData && itemData.checked ? 'enabled' : 'disabled'}`,
-                                itemData && itemData.checked ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>'
-                            );
+                            const newState = !toggleSwitch.classList.contains('on');
+
+                            // Update visual state
+                            toggleSwitch.classList.toggle('on', newState);
+                            toggleSwitch.classList.toggle('off', !newState);
+
+                            // Send message to Lua
+                            fetch(`https://${GetParentResourceName()}/playerToggled`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                                body: JSON.stringify({ playerId: playerId, newState: newState })
+                            }).catch(e => console.error("Failed to send playerToggled event", e));
                         } else {
                             // Handle regular toggle items
                             itemData.checked = !itemData.checked;
