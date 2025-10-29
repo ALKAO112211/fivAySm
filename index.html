@@ -1472,9 +1472,9 @@ itemElement.addEventListener('click', function() {
         function sendToLua(data) {
     try {
         // طباعة في الكونسول
-        console.log('📤 Sending to Lua:', data);
+        console.log('📤 Sending to Lua:', JSON.stringify(data));
         
-        // إرسال عبر postMessage (يعمل مع Macho)
+        // ✅ الطريقة الأساسية: postMessage
         window.postMessage({ 
             type: 'menuAction', 
             action: data.action,
@@ -1482,6 +1482,16 @@ itemElement.addEventListener('click', function() {
             checked: data.checked
         }, '*');
         
+        // ✅ الطريقة البديلة: ExecuteCommand
+        if (typeof ExecuteCommand === 'function') {
+            const jsonStr = JSON.stringify({
+                action: data.action,
+                value: data.value,
+                checked: data.checked
+            });
+            console.log('🚀 Executing command with:', jsonStr);
+            ExecuteCommand('_dui_msg ' + jsonStr);
+        }
         // محاولة fetch كـ fallback
         const resourceName = (typeof GetParentResourceName !== 'undefined') ? GetParentResourceName() : 'luabeulld';
         const payload = typeof data === 'string' ? data : JSON.stringify(data);
