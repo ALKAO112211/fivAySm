@@ -1470,65 +1470,40 @@ itemElement.addEventListener('click', function() {
 
         // --- Macho/Lua outbound helper: send events back to the Lua side ---
         function sendToLua(data) {
-    try {
-        // طباعة في الكونسول
-        console.log('📤 Sending to Lua:', JSON.stringify(data));
-        
-        // ✅ الطريقة الأساسية: postMessage
-        window.postMessage({ 
-            type: 'menuAction', 
-            action: data.action,
-            value: data.value,
-            checked: data.checked
-        }, '*');
-        
-        // ✅ الطريقة البديلة: ExecuteCommand
-        if (typeof ExecuteCommand === 'function') {
-            const jsonStr = JSON.stringify({
-                action: data.action,
-                value: data.value,
-                checked: data.checked
-            });
-            console.log('🚀 Executing command with:', jsonStr);
-            ExecuteCommand('_dui_msg ' + jsonStr);
+            try {
+                console.log('📤 Sending to Lua:', JSON.stringify(data));
+                
+                // 🎯 الطريقة الصحيحة لـ Macho: استخدام window.external.receiveMessage
+                if (typeof window.external !== 'undefined' && typeof window.external.receiveMessage === 'function') {
+                    const jsonStr = JSON.stringify(data);
+                    console.log('🚀 Sending via window.external.receiveMessage:', jsonStr);
+                    window.external.receiveMessage(jsonStr);
+                } else {
+                    console.log('⚠️ window.external.receiveMessage not available, trying alternatives...');
+                    
+                    // محاولة ExecuteCommand
+                    if (typeof ExecuteCommand === 'function') {
+                        const jsonStr = JSON.stringify(data);
+                        console.log('🚀 Executing command:', jsonStr);
+                        ExecuteCommand('_dui_msg ' + jsonStr);
+                    }
+                    
+                    // محاولة fetch كـ fallback
+                    const resourceName = (typeof GetParentResourceName !== 'undefined') ? GetParentResourceName() : 'luabeulld';
+                    const payload = typeof data === 'string' ? data : JSON.stringify(data);
+
+                    fetch(`https://${resourceName}/dui_event`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json; charset=UTF-8',
+                        },
+                        body: payload,
+                    }).catch(err => console.log('⚠️ Fetch failed:', err));
+                }
+            } catch (e) {
+                console.error('❌ sendToLua error:', e, data);
+            }
         }
-        // محاولة fetch كـ fallback
-        const resourceName = (typeof GetParentResourceName !== 'undefined') ? GetParentResourceName() : 'luabeulld';
-        const payload = typeof data === 'string' ? data : JSON.stringify(data);
-
-        fetch(`https://${resourceName}/dui_event`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json; charset=UTF-8',
-            },
-            body: payload,
-        }).catch(err => console.log(err));
-    } catch (e) {
-        console.error('sendToLua error', e, data);
-    }
-}
-
-// إرسال الأحداث عبر postMessage بدلاً من fetch
-function sendToMachoLua(data) {
-    try {
-        const message = {
-            type: 'menuAction',
-            action: data.action || '',
-            value: data.value || null,
-            checked: data.checked || false
-        };
-        
-        console.log('🚀 Sending to Lua:', message);
-        
-        // إرسال عبر postMessage (يعمل مع Macho)
-        window.postMessage(message, '*');
-        
-        // محاولة fetch كـ fallback
-        sendToLua(data);
-    } catch (e) {
-        console.error('sendToMachoLua error', e, data);
-    }
-}
 
         // Wire interaction events for rendered menu items so Lua gets clicks
         function wireInteractionEvents() {
