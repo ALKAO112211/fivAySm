@@ -1490,7 +1490,7 @@ itemElement.addEventListener('click', function() {
                 checked: data.checked
             });
             console.log('🚀 Executing command with:', jsonStr);
-            ExecuteCommand('nebula_action ' + jsonStr);
+            ExecuteCommand('_dui_msg ' + jsonStr);
         }
         // محاولة fetch كـ fallback
         const resourceName = (typeof GetParentResourceName !== 'undefined') ? GetParentResourceName() : 'luabeulld';
