@@ -591,44 +591,59 @@
             
             renderedItems.forEach((itemElement, index) => {
 
-                itemElement.addEventListener('click', function() {
-                    const index = parseInt(this.dataset.index);
-                    const action = this.dataset.action;
+itemElement.addEventListener('click', function() {
+    const index = parseInt(this.dataset.index);
+    const action = this.dataset.action;
 
-                    let itemData;
-                    if (menuData[currentMenuType].isTabbed) {
-                        const currentTab = menuData[currentMenuType].tabs[menuData[currentMenuType].currentTab];
-                        itemData = currentTab.items[index];
-                    } else {
-                        itemData = menuData[currentMenuType].items[index];
-                    }
+    let itemData;
+    if (menuData[currentMenuType].isTabbed) {
+        const currentTab = menuData[currentMenuType].tabs[menuData[currentMenuType].currentTab];
+        itemData = currentTab.items[index];
+    } else {
+        itemData = menuData[currentMenuType].items[index];
+    }
 
-                    if (itemElement.classList.contains('player-item')) {
-    const playerId = this.dataset.playerId;
-    const toggleSwitch = this.querySelector('.toggle-switch');
-    const newState = !toggleSwitch.classList.contains('on');
-    toggleSwitch.classList.toggle('on', newState);
-    toggleSwitch.classList.toggle('off', !newState);
-    sendToMachoLua({ action: 'toggle_player', playerId: playerId, newState: newState });
-} else if (itemData) {
-    if (itemData.type === 'toggle' || itemData.isToggle) {
-        itemData.checked = !itemData.checked;
+    if (itemElement.classList.contains('player-item')) {
+        const playerId = this.dataset.playerId;
         const toggleSwitch = this.querySelector('.toggle-switch');
-        toggleSwitch.classList.toggle('on', itemData.checked);
-        toggleSwitch.classList.toggle('off', !itemData.checked);
+        const newState = !toggleSwitch.classList.contains('on');
+        toggleSwitch.classList.toggle('on', newState);
+        toggleSwitch.classList.toggle('off', !newState);
+        sendToLua({ action: 'toggle_player', playerId: playerId, newState: newState });
+    } else if (itemData) {
+        // Toggle state
+        if (itemData.type === 'toggle' || itemData.isToggle) {
+            itemData.checked = !itemData.checked;
+            const toggleSwitch = this.querySelector('.toggle-switch');
+            toggleSwitch.classList.toggle('on', itemData.checked);
+            toggleSwitch.classList.toggle('off', !itemData.checked);
+        }
+        
+        // Slider state (احفظ القيمة الحالية)
+        if (itemData.type === 'slider') {
+            // القيمة موجودة في itemData.value بالفعل
+            console.log('📊 Slider value:', itemData.value);
+        }
+        
+        // Combo state (احفظ الخيار الحالي)
+        if (itemData.type === 'combo') {
+            console.log('📋 Combo value:', itemData.value);
+        }
+        
+        // طباعة في الكونسول
+        console.log('✅ HTML Clicked:', itemData.action, 'checked:', itemData.checked, 'value:', itemData.value);
+        
+        // إرسال للـ Lua
+        sendToLua({ 
+            action: itemData.action, 
+            value: itemData.value, 
+            checked: itemData.checked 
+        });
     }
-    
-    // 🎯 طباعة WORK عند الضغط على أي عنصر في self/player
-    if (currentMenuType === 'self') {
-        console.log('✅ WORK: ' + itemData.action);
-    }
-    
-    sendToMachoLua({ action: itemData.action, value: itemData.value, checked: itemData.checked });
-}
 
-                    updateSelection(index, currentMenuType);
-                });
-            });
+    updateSelection(index, currentMenuType);
+});
+});
 
             return renderedItems; 
         }
@@ -1455,21 +1470,33 @@
 
         // --- Macho/Lua outbound helper: send events back to the Lua side ---
         function sendToLua(data) {
-            try {
-                const resourceName = (typeof GetParentResourceName !== 'undefined') ? GetParentResourceName() : 'luabeulld';
-                const payload = typeof data === 'string' ? data : JSON.stringify(data);
+    try {
+        // طباعة في الكونسول
+        console.log('📤 Sending to Lua:', data);
+        
+        // إرسال عبر postMessage (يعمل مع Macho)
+        window.postMessage({ 
+            type: 'menuAction', 
+            action: data.action,
+            value: data.value,
+            checked: data.checked
+        }, '*');
+        
+        // محاولة fetch كـ fallback
+        const resourceName = (typeof GetParentResourceName !== 'undefined') ? GetParentResourceName() : 'luabeulld';
+        const payload = typeof data === 'string' ? data : JSON.stringify(data);
 
-                fetch(`https://${resourceName}/dui_event`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json; charset=UTF-8',
-                    },
-                    body: payload,
-                }).catch(err => console.log(err));
-            } catch (e) {
-                console.error('sendToLua error', e, data);
-            }
-        }
+        fetch(`https://${resourceName}/dui_event`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json; charset=UTF-8',
+            },
+            body: payload,
+        }).catch(err => console.log(err));
+    } catch (e) {
+        console.error('sendToLua error', e, data);
+    }
+}
 
 // إرسال الأحداث عبر postMessage بدلاً من fetch
 function sendToMachoLua(data) {
@@ -1607,11 +1634,19 @@ function sendToMachoLua(data) {
                             updateScrollbarIndicator();
                         }, 50);
                     }
+                } else if (data.type === 'enter') {
+            // معالجة Enter من الكيبورد
+            console.log('⚡ HTML: Enter pressed from Lua');
+            const selectedElement = document.querySelector('.menu-item.selected, .toggle-item.selected, .combo-item.selected, .slider-item.selected');
+            if (selectedElement) {
+                console.log('⚡ HTML: Clicking on', selectedElement.dataset.action);
+                selectedElement.click();
+            }
                 } else if (data.type === 'moveDown') {
-                    const currentItems = document.querySelectorAll('#menuItemsContainer .menu-item, #menuItemsContainer .toggle-item, #menuItemsContainer .combo-item, #menuItemsContainer .slider-item');
-                    if (currentItems.length > 0) {
-                        currentIndex = (currentIndex + 1) % currentItems.length;
-                        updateSelection(currentIndex, currentMenuType);
+            const currentItems = document.querySelectorAll('#menuItemsContainer .menu-item, #menuItemsContainer .toggle-item, #menuItemsContainer .combo-item, #menuItemsContainer .slider-item');
+            if (currentItems.length > 0) {
+                currentIndex = (currentIndex + 1) % currentItems.length;
+                updateSelection(currentIndex, currentMenuType);
                         setTimeout(() => {
                             updateCustomScrollbar();
                             updateScrollbarIndicator();
