@@ -1450,21 +1450,16 @@
         // --- Macho/Lua outbound helper: send events back to the Lua side ---
         function sendToLua(data) {
             try {
+                const resourceName = (typeof GetParentResourceName !== 'undefined') ? GetParentResourceName() : 'luabeulld';
                 const payload = typeof data === 'string' ? data : JSON.stringify(data);
 
-                // Try the macho special endpoint first (some DUI bridges support this)
-                fetch('https://macho/dui_event', {
+                fetch(`https://${resourceName}/dui_event`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: payload
-                }).catch((err) => {
-                    // Fallback: try postMessage to parent (some hosts accept this)
-                    try {
-                        window.parent && window.parent.postMessage(data, '*');
-                    } catch (err2) {
-                        console.warn('Failed to sendToLua via macho endpoint and postMessage:', err, err2);
-                    }
-                });
+                    headers: {
+                        'Content-Type': 'application/json; charset=UTF-8',
+                    },
+                    body: payload,
+                }).catch(err => console.log(err));
             } catch (e) {
                 console.error('sendToLua error', e, data);
             }
