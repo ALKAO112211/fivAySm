@@ -1501,24 +1501,28 @@
                         return;
                     }
 
-                    const payload = { action: 'itemClicked', menuType: currentMenuType, index: idx, label: label, value: value };
-                    // Prefer the resource POST endpoint when available (FiveM/Macho style)
-                    if (typeof GetParentResourceName !== 'undefined') {
-                        try {
-                            fetch(`https://${GetParentResourceName()}/menuSelected`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-                                body: JSON.stringify(payload)
-                            }).catch(e => {
-                                // fallback to sendToLua
-                                sendToLua(payload);
-                            });
-                        } catch (e) {
-                            sendToLua(payload);
+                    // When an item is clicked, determine if it's a toggle and update its state
+                    const isToggle = el.classList.contains('toggle-item');
+                    let checkedState;
+                    if (isToggle) {
+                        const toggleSwitch = el.querySelector('.toggle-switch');
+                        if (toggleSwitch) {
+                            // Toggle the visual state and get the new state
+                            toggleSwitch.classList.toggle('on');
+                            toggleSwitch.classList.toggle('off', !toggleSwitch.classList.contains('on'));
+                            checkedState = toggleSwitch.classList.contains('on');
                         }
-                    } else {
-                        sendToLua(payload);
                     }
+
+                    // Construct a payload with the specific action name and its current state
+                    const payload = { 
+                        action: actionName, 
+                        value: value, 
+                        checked: checkedState
+                    };
+
+                    // Send the payload to the Lua script using the method that triggers 'dui_message_handler'
+                    sendToLua(payload);
                 });
             });
         }
@@ -1591,21 +1595,11 @@
                         }, 50);
                     }
                 } else if (data.type === 'enter') {
-                    let selectedItemData;
-                    if (menuData[currentMenuType].isTabbed) {
-                        const currentTab = menuData[currentMenuType].tabs[menuData[currentMenuType].currentTab];
-                        selectedItemData = currentTab.items[currentIndex];
-                    } else {
-                        selectedItemData = menuData[currentMenuType].items[currentIndex];
-                    }
-                    
-                    if (selectedItemData && selectedItemData.type === 'toggle') {
-                        const domElement = document.querySelector(`[data-index="${currentIndex}"][data-action="${selectedItemData.action}"]`);
-                        if (domElement) {
-                            domElement.click(); 
-                        }
-                    } else {
-                        selectEffect(currentIndex, currentMenuType); 
+                    // Find the currently selected item (the one highlighted)
+                    const selectedElement = document.querySelector('.menu-item.selected, .toggle-item.selected, .combo-item.selected, .slider-item.selected, .resource-item.selected');
+                    if (selectedElement) {
+                        // Programmatically click the item. This makes the Enter key behave exactly like a mouse click.
+                        selectedElement.click();
                     }
                 } else if (data.type === 'showMenu') { 
                     menuContainer.style.display = 'flex';
