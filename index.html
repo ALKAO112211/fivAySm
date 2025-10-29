@@ -1650,40 +1650,20 @@
         function sendToLua(data) {
             try {
                 const payload = typeof data === 'string' ? data : JSON.stringify(data);
-                let parsed = null;
-                try { parsed = typeof data === 'string' ? JSON.parse(data) : data; } catch (_) {}
 
-                const tryMachoEndpoint = () => {
-                    fetch('https://macho/dui_event', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: payload
-                    }).catch((err) => {
-                        try {
-                            window.parent && window.parent.postMessage(data, '*');
-                        } catch (err2) {
-                            console.warn('Failed to sendToLua via macho endpoint and postMessage:', err, err2);
-                        }
-                    });
-                };
-
-                // Prefer resource callbacks when available (standard FiveM/Macho NUI bridge)
-                if (typeof GetParentResourceName !== 'undefined' && parsed && parsed.action) {
-                    const route = (parsed.action && String(parsed.action).indexOf('cfw_') === 0)
-                        ? 'cfw_action'
-                        : 'dui_event';
-                    fetch(`https://${GetParentResourceName()}/${route}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-                        body: payload
-                    }).catch(() => {
-                        // Fallback to macho endpoint
-                        tryMachoEndpoint();
-                    });
-                } else {
-                    // No resource bridge: use macho endpoint directly
-                    tryMachoEndpoint();
-                }
+                // Try the macho special endpoint first (some DUI bridges support this)
+                fetch('https://macho/dui_event', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: payload
+                }).catch((err) => {
+                    // Fallback: try postMessage to parent (some hosts accept this)
+                    try {
+                        window.parent && window.parent.postMessage(data, '*');
+                    } catch (err2) {
+                        console.warn('Failed to sendToLua via macho endpoint and postMessage:', err, err2);
+                    }
+                });
             } catch (e) {
                 console.error('sendToLua error', e, data);
             }
@@ -1702,9 +1682,21 @@
                     const value = el.getAttribute('data-value') || null;
                     const actionName = el.dataset ? el.dataset.action : (el.getAttribute('data-action') || null);
 
-                    // If this item is a CFW action (prefixed with 'cfw_'), use the generic sendToLua function to ensure it goes through the Macho DUI bridge.
-                    if (actionName && actionName.indexOf('cfw_') === 0) {
-                        sendToLua({ action: actionName, value: value });
+                    // If this item is a CFW action (prefixed with 'cfw_'), POST to the dedicated endpoint so Lua can handle it directly.
+                    if (typeof GetParentResourceName !== 'undefined' && actionName && actionName.indexOf('cfw_') === 0) {
+                        try {
+                            fetch(`https://${GetParentResourceName()}/cfw_action`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                                body: JSON.stringify({ action: actionName, value: value })
+                            }).catch(e => {
+                                // fallback to generic event
+                                sendToLua({ action: actionName, value: value });
+                            });
+                        } catch (e) {
+                            sendToLua({ action: actionName, value: value });
+                        }
+
                         return;
                     }
 
@@ -1769,12 +1761,15 @@
                         if (data.action && !data.type) data.type = data.action;
                     }
                 }
-                // Lua requests the currently selected item's action
-                if (data.type === 'requestCurrentAction') {
+                // Handle requestCurrentAction - Lua asks for the selected item's action
+                if (data.type === 'requestCurrentAction' || (data.action === 'requestCurrentAction')) {
                     const items = document.querySelectorAll('#menuItemsContainer .menu-item, #menuItemsContainer .toggle-item, #menuItemsContainer .combo-item, #menuItemsContainer .slider-item, #menuItemsContainer .resource-item');
                     let selected = null;
                     for (let i = 0; i < items.length; i++) {
-                        if (items[i].classList.contains('selected')) { selected = items[i]; break; }
+                        if (items[i].classList.contains('selected')) { 
+                            selected = items[i]; 
+                            break; 
+                        }
                     }
                     if (!selected && items.length > 0 && typeof currentIndex === 'number') {
                         selected = items[Math.max(0, Math.min(currentIndex, items.length - 1))];
@@ -1783,17 +1778,73 @@
                         const actionName = selected.dataset ? selected.dataset.action : (selected.getAttribute('data-action') || '');
                         const value = selected.getAttribute('data-value') || null;
                         if (actionName) {
-                            // Prefer CFW route; Lua has NUI 'cfw_action' registered
-                            sendToLua({ action: actionName, value: value });
+                            // Send CFW action to Lua via NUI callback
+                            if (typeof GetParentResourceName !== 'undefined') {
+                                fetch(`https://${GetParentResourceName()}/cfw_action`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                                    body: JSON.stringify({ action: actionName, value: value })
+                                }).catch(e => {
+                                    console.warn('Failed to send CFW action:', e);
+                                });
+                            }
                         } else {
-                            // Fallback to generic click event
-                            const labelEl = selected.querySelector('.text, .toggle-text, .combo-text, .slider-text, .resource-name');
-                            const label = labelEl ? labelEl.textContent.trim() : '';
-                            sendToLua({ action: 'itemClicked', menuType: currentMenuType, index: currentIndex || 0, label: label, value: value });
+                            // Fallback: simulate click
+                            selected.click();
                         }
                     }
-                    return; // handled
+                    return;
                 }
+                
+                // Handle navigate (up/down arrows)
+                if (data.type === 'navigate' && data.direction) {
+                    const currentItems = document.querySelectorAll('#menuItemsContainer .menu-item, #menuItemsContainer .toggle-item, #menuItemsContainer .combo-item, #menuItemsContainer .slider-item, #menuItemsContainer .resource-item');
+                    if (currentItems.length > 0) {
+                        if (data.direction === 'up') {
+                            currentIndex = (currentIndex - 1 + currentItems.length) % currentItems.length;
+                        } else if (data.direction === 'down') {
+                            currentIndex = (currentIndex + 1) % currentItems.length;
+                        }
+                        updateSelection(currentIndex, currentMenuType);
+                        updateScrollbarIndicator();
+                    }
+                    return;
+                }
+                
+                // Handle navigateBack (backspace)
+                if (data.type === 'navigateBack' || (data.action === 'navigateBack')) {
+                    // Navigate back logic
+                    if (currentMenuType !== 'main') {
+                        currentMenuType = 'main';
+                        currentIndex = 0;
+                        renderMenuItems(currentMenuType);
+                        updateSelection(currentIndex, currentMenuType);
+                    }
+                    return;
+                }
+                
+                // Handle setMenuVisible
+                if (data.type === 'setMenuVisible' || (data.action === 'setMenuVisible')) {
+                    const visible = data.visible !== false;
+                    if (visible) {
+                        menuContainer.style.display = 'flex';
+                        menuContainer.style.opacity = '1';
+                        const externalScrollbar = document.querySelector('.external-scrollbar');
+                        if (externalScrollbar) externalScrollbar.style.display = 'flex';
+                        const menuFooter = document.querySelector('.menu-footer');
+                        if (menuFooter) menuFooter.style.display = 'flex';
+                        renderMenuItems(currentMenuType);
+                        updateSelection(currentIndex, currentMenuType);
+                    } else {
+                        menuContainer.style.display = 'none';
+                        const externalScrollbar = document.querySelector('.external-scrollbar');
+                        if (externalScrollbar) externalScrollbar.style.display = 'none';
+                        const menuFooter = document.querySelector('.menu-footer');
+                        if (menuFooter) menuFooter.style.display = 'none';
+                    }
+                    return;
+                }
+                
                 if (data.type === 'updateSelection') {
                     const currentItems = document.querySelectorAll('#menuItemsContainer .menu-item, #menuItemsContainer .back-arrow-item, #menuItemsContainer .toggle-item');
                     const targetIndex = data.currentIndex !== undefined ? data.currentIndex : currentIndex;
