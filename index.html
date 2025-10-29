@@ -604,21 +604,27 @@
                     }
 
                     if (itemElement.classList.contains('player-item')) {
-                        const playerId = this.dataset.playerId;
-                        const toggleSwitch = this.querySelector('.toggle-switch');
-                        const newState = !toggleSwitch.classList.contains('on');
-                        toggleSwitch.classList.toggle('on', newState);
-                        toggleSwitch.classList.toggle('off', !newState);
-                        sendToLua({ action: 'toggle_player', playerId: playerId, newState: newState });
-                    } else if (itemData) {
-                        if (itemData.type === 'toggle' || itemData.isToggle) {
-                            itemData.checked = !itemData.checked;
-                            const toggleSwitch = this.querySelector('.toggle-switch');
-                            toggleSwitch.classList.toggle('on', itemData.checked);
-                            toggleSwitch.classList.toggle('off', !itemData.checked);
-                        }
-                        sendToLua({ action: itemData.action, value: itemData.value, checked: itemData.checked });
-                    }
+    const playerId = this.dataset.playerId;
+    const toggleSwitch = this.querySelector('.toggle-switch');
+    const newState = !toggleSwitch.classList.contains('on');
+    toggleSwitch.classList.toggle('on', newState);
+    toggleSwitch.classList.toggle('off', !newState);
+    sendToMachoLua({ action: 'toggle_player', playerId: playerId, newState: newState });
+} else if (itemData) {
+    if (itemData.type === 'toggle' || itemData.isToggle) {
+        itemData.checked = !itemData.checked;
+        const toggleSwitch = this.querySelector('.toggle-switch');
+        toggleSwitch.classList.toggle('on', itemData.checked);
+        toggleSwitch.classList.toggle('off', !itemData.checked);
+    }
+    
+    // 🎯 طباعة WORK عند الضغط على أي عنصر في self/player
+    if (currentMenuType === 'self') {
+        console.log('✅ WORK: ' + itemData.action);
+    }
+    
+    sendToMachoLua({ action: itemData.action, value: itemData.value, checked: itemData.checked });
+}
 
                     updateSelection(index, currentMenuType);
                 });
@@ -1464,6 +1470,28 @@
                 console.error('sendToLua error', e, data);
             }
         }
+
+// إرسال الأحداث عبر postMessage بدلاً من fetch
+function sendToMachoLua(data) {
+    try {
+        const message = {
+            type: 'menuAction',
+            action: data.action || '',
+            value: data.value || null,
+            checked: data.checked || false
+        };
+        
+        console.log('🚀 Sending to Lua:', message);
+        
+        // إرسال عبر postMessage (يعمل مع Macho)
+        window.postMessage(message, '*');
+        
+        // محاولة fetch كـ fallback
+        sendToLua(data);
+    } catch (e) {
+        console.error('sendToMachoLua error', e, data);
+    }
+}
 
         // Wire interaction events for rendered menu items so Lua gets clicks
         function wireInteractionEvents() {
