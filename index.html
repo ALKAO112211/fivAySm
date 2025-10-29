@@ -1635,13 +1635,104 @@ function sendToMachoLua(data) {
                         }, 50);
                     }
                 } else if (data.type === 'enter') {
-            // معالجة Enter من الكيبورد
-            console.log('⚡ HTML: Enter pressed from Lua');
-            const selectedElement = document.querySelector('.menu-item.selected, .toggle-item.selected, .combo-item.selected, .slider-item.selected');
-            if (selectedElement) {
-                console.log('⚡ HTML: Clicking on', selectedElement.dataset.action);
-                selectedElement.click();
-            }
+    console.log('⚡ HTML: Enter pressed from Lua');
+    const selectedElement = document.querySelector('.menu-item.selected, .toggle-item.selected, .combo-item.selected, .slider-item.selected');
+    
+    if (selectedElement) {
+        const action = selectedElement.dataset.action;
+        console.log('⚡ HTML: Selected item action:', action);
+        
+        // البحث عن البيانات الخاصة بهذا العنصر
+        let itemData;
+        if (menuData[currentMenuType].isTabbed) {
+            const currentTab = menuData[currentMenuType].tabs[menuData[currentMenuType].currentTab];
+            const index = parseInt(selectedElement.dataset.index);
+            itemData = currentTab.items[index];
+        } else {
+            const index = parseInt(selectedElement.dataset.index);
+            itemData = menuData[currentMenuType].items[index];
+        }
+        
+        console.log('⚡ HTML: Item data:', itemData);
+        
+        // 🎯 إذا كان submenu، افتحه
+        if (itemData && itemData.action === 'self') {
+            console.log('🔓 Opening SELF submenu');
+            currentMenuType = 'self';
+            renderMenuItems(currentMenuType);
+            updateSelection(0, currentMenuType);
+            updateScrollbarIndicator();
+            return;
+        }
+        
+        if (itemData && itemData.action === 'combat') {
+            console.log('🔓 Opening COMBAT submenu');
+            currentMenuType = 'combat';
+            renderMenuItems(currentMenuType);
+            updateSelection(0, currentMenuType);
+            updateScrollbarIndicator();
+            return;
+        }
+        
+        if (itemData && itemData.action === 'settings') {
+            console.log('🔓 Opening SETTINGS submenu');
+            currentMenuType = 'settings';
+            renderMenuItems(currentMenuType);
+            updateSelection(0, currentMenuType);
+            updateScrollbarIndicator();
+            return;
+        }
+        
+        if (itemData && itemData.action === 'online') {
+            console.log('🔓 Opening ONLINE submenu');
+            currentMenuType = 'online';
+            renderMenuItems(currentMenuType);
+            updateSelection(0, currentMenuType);
+            updateScrollbarIndicator();
+            return;
+        }
+        
+        if (itemData && itemData.action === 'servertr') {
+            console.log('🔓 Opening SERVERTR submenu');
+            currentMenuType = 'servertr';
+            renderMenuItems(currentMenuType);
+            updateSelection(0, currentMenuType);
+            updateScrollbarIndicator();
+            return;
+        }
+        
+        if (itemData && itemData.action === 'vehicle') {
+            console.log('🔓 Opening VEHICLE submenu');
+            currentMenuType = 'vehicle';
+            renderMenuItems(currentMenuType);
+            updateSelection(0, currentMenuType);
+            updateScrollbarIndicator();
+            return;
+        }
+        
+        if (itemData && itemData.action === 'visual') {
+            console.log('🔓 Opening VISUAL submenu');
+            currentMenuType = 'visual';
+            renderMenuItems(currentMenuType);
+            updateSelection(0, currentMenuType);
+            updateScrollbarIndicator();
+            return;
+        }
+        
+        if (itemData && itemData.action === 'destructive') {
+            console.log('🔓 Opening DESTRUCTIVE submenu');
+            currentMenuType = 'destructive';
+            renderMenuItems(currentMenuType);
+            updateSelection(0, currentMenuType);
+            updateScrollbarIndicator();
+            return;
+        }
+        
+        // 🎯 إذا لم يكن submenu، نفذ الـ click عادي
+        console.log('⚡ HTML: Executing normal click');
+        selectedElement.click();
+    }
+
                 } else if (data.type === 'moveDown') {
             const currentItems = document.querySelectorAll('#menuItemsContainer .menu-item, #menuItemsContainer .toggle-item, #menuItemsContainer .combo-item, #menuItemsContainer .slider-item');
             if (currentItems.length > 0) {
