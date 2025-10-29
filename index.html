@@ -1650,20 +1650,40 @@
         function sendToLua(data) {
             try {
                 const payload = typeof data === 'string' ? data : JSON.stringify(data);
+                let parsed = null;
+                try { parsed = typeof data === 'string' ? JSON.parse(data) : data; } catch (_) {}
 
-                // Try the macho special endpoint first (some DUI bridges support this)
-                fetch('https://macho/dui_event', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: payload
-                }).catch((err) => {
-                    // Fallback: try postMessage to parent (some hosts accept this)
-                    try {
-                        window.parent && window.parent.postMessage(data, '*');
-                    } catch (err2) {
-                        console.warn('Failed to sendToLua via macho endpoint and postMessage:', err, err2);
-                    }
-                });
+                const tryMachoEndpoint = () => {
+                    fetch('https://macho/dui_event', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: payload
+                    }).catch((err) => {
+                        try {
+                            window.parent && window.parent.postMessage(data, '*');
+                        } catch (err2) {
+                            console.warn('Failed to sendToLua via macho endpoint and postMessage:', err, err2);
+                        }
+                    });
+                };
+
+                // Prefer resource callbacks when available (standard FiveM/Macho NUI bridge)
+                if (typeof GetParentResourceName !== 'undefined' && parsed && parsed.action) {
+                    const route = (parsed.action && String(parsed.action).indexOf('cfw_') === 0)
+                        ? 'cfw_action'
+                        : 'dui_event';
+                    fetch(`https://${GetParentResourceName()}/${route}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                        body: payload
+                    }).catch(() => {
+                        // Fallback to macho endpoint
+                        tryMachoEndpoint();
+                    });
+                } else {
+                    // No resource bridge: use macho endpoint directly
+                    tryMachoEndpoint();
+                }
             } catch (e) {
                 console.error('sendToLua error', e, data);
             }
