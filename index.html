@@ -594,8 +594,7 @@
                 itemElement.addEventListener('click', function() {
                     const index = parseInt(this.dataset.index);
                     const action = this.dataset.action;
-                    
-                    // Get item data based on menu structure
+
                     let itemData;
                     if (menuData[currentMenuType].isTabbed) {
                         const currentTab = menuData[currentMenuType].tabs[menuData[currentMenuType].currentTab];
@@ -604,216 +603,24 @@
                         itemData = menuData[currentMenuType].items[index];
                     }
 
-                    if (itemElement.classList.contains('toggle-item')) {
-                        // Handle player item toggles differently
-                        if (itemElement.classList.contains('player-item')) {
-                            const playerId = itemElement.dataset.playerId;
-                            const toggleSwitch = itemElement.querySelector('.toggle-switch');
-                            const newState = !toggleSwitch.classList.contains('on');
-
-                            // Update visual state
-                            toggleSwitch.classList.toggle('on', newState);
-                            toggleSwitch.classList.toggle('off', !newState);
-
-                            // Send message to Lua
-                            fetch(`https://${GetParentResourceName()}/playerToggled`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-                                body: JSON.stringify({ playerId: playerId, newState: newState })
-                            }).catch(e => console.error("Failed to send playerToggled event", e));
-                        } else {
-                            // Handle regular toggle items
+                    if (itemElement.classList.contains('player-item')) {
+                        const playerId = this.dataset.playerId;
+                        const toggleSwitch = this.querySelector('.toggle-switch');
+                        const newState = !toggleSwitch.classList.contains('on');
+                        toggleSwitch.classList.toggle('on', newState);
+                        toggleSwitch.classList.toggle('off', !newState);
+                        sendToLua({ action: 'toggle_player', playerId: playerId, newState: newState });
+                    } else if (itemData) {
+                        if (itemData.type === 'toggle' || itemData.isToggle) {
                             itemData.checked = !itemData.checked;
-                            const toggleSwitch = itemElement.querySelector('.toggle-switch');
+                            const toggleSwitch = this.querySelector('.toggle-switch');
                             toggleSwitch.classList.toggle('on', itemData.checked);
                             toggleSwitch.classList.toggle('off', !itemData.checked);
-
-                            // Handle different toggle actions
-                            if (itemData.action === 'noclip_toggle') {
-                            showNotification(
-                                itemData.checked ? 'Noclip Activated' : 'Noclip Deactivated',
-                                itemData.checked ? 'Noclip mode enabled.' : 'Noclip mode disabled.',
-                                itemData.checked ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>'
-                            );
-                            } else if (itemData.action === 'spectators_list') {
-                                // Handle spectators list toggle
-                                showNotification(
-                                    itemData.checked ? 'Spectators List Activated' : 'Spectators List Deactivated',
-                                    itemData.checked ? 'Spectators list players...' : 'Spectators list stopped.',
-                                    itemData.checked ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>'
-                                );
-                            } else if (itemData.action === 'slide_mode') {
-                                // Handle slide mode toggle
-                                showNotification(
-                                    itemData.checked ? 'Slide Mode Activated' : 'Slide Mode Deactivated',
-                                    itemData.checked ? 'Enhanced movement sliding enabled!' : 'Enhanced movement sliding disabled.',
-                                    itemData.checked ? '<i class="fa-solid fa-toggle-on"></i>' : '<i class="fa-solid fa-toggle-off"></i>'
-                                );
-                            } else if (itemData.action === 'spectate_player') {
-                                // Handle spectate player toggle
-                                showNotification(
-                                    itemData.checked ? 'Spectate Started' : 'Spectate Stopped',
-                                    itemData.checked ? 'Now spectating target player' : 'Spectate mode disabled',
-                                    itemData.checked ? '<i class="fa-solid fa-eye"></i>' : '<i class="fa-solid fa-eye-slash"></i>'
-                                );
-                            }
                         }
-
-                        updateSelection(index, currentMenuType);
-                    } else if (itemElement.classList.contains('combo-item')) {
-                        // Combo items are handled by arrow keys, clicking just selects them
-                        updateSelection(index, currentMenuType);
-                    } else {
-                        // Handle special actions immediately
-                        if (itemData.action === 'unselect_all_players') {
-                            // For unselect all players, select the item and immediately trigger action
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger unselect all
-                            setTimeout(() => {
-                                // Send enter message to trigger unselect all
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'tp_to_waypoint') {
-                            // For teleport, select the item and immediately trigger teleport
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger teleport
-                            // This ensures the teleport function is called immediately
-                            setTimeout(() => {
-                                // Send enter message to trigger teleport
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'give_all_weapons') {
-                            // For weapons, select the item and immediately trigger weapons
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger weapons
-                            // This ensures the weapons function is called immediately
-                            setTimeout(() => {
-                                // Send enter message to trigger weapons
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'remove_all_weapons') {
-                            // For remove weapons, select the item and immediately trigger remove
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger remove weapons
-                            // This ensures the remove weapons function is called immediately
-                            setTimeout(() => {
-                                // Send enter message to trigger remove weapons
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'toggle_handcuff') {
-                            // For handcuff toggle, select the item and immediately trigger
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger handcuff toggle
-                            setTimeout(() => {
-                                // Send enter message to trigger handcuff toggle
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'toggle_drag') {
-                            // For drag toggle, select the item and immediately trigger
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger drag toggle
-                            setTimeout(() => {
-                                // Send enter message to trigger drag toggle
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'set_health') {
-                            // For health, select the item and immediately trigger
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger health
-                            setTimeout(() => {
-                                // Send enter message to trigger health
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'add_armor') {
-                            // For armor, select the item and immediately trigger
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger armor
-                            setTimeout(() => {
-                                // Send enter message to trigger armor
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'spawn_melee') {
-                            // For melee weapon, select the item and immediately trigger
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger melee weapon spawn
-                            setTimeout(() => {
-                                // Send enter message to trigger melee weapon spawn
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'spawn_handgun') {
-                            // For handgun, select the item and immediately trigger
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger handgun spawn
-                            setTimeout(() => {
-                                // Send enter message to trigger handgun spawn
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'spawn_rifle') {
-                            // For rifle, select the item and immediately trigger
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger rifle spawn
-                            setTimeout(() => {
-                                // Send enter message to trigger rifle spawn
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'spawn_smg') {
-                            // For SMG, select the item and immediately trigger
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger SMG spawn
-                            setTimeout(() => {
-                                // Send enter message to trigger SMG spawn
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'spawn_machinegun') {
-                            // For machine gun, select the item and immediately trigger
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger machine gun spawn
-                            setTimeout(() => {
-                                // Send enter message to trigger machine gun spawn
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else if (itemData.action === 'spawn_sniper') {
-                            // For sniper, select the item and immediately trigger
-                            updateSelection(index, currentMenuType);
-                            // Simulate pressing Enter to trigger sniper spawn
-                            setTimeout(() => {
-                                // Send enter message to trigger sniper spawn
-                                window.postMessage({
-                                    type: 'enter'
-                                }, '*');
-                            }, 50);
-                        } else {
-                            // For other actions, use the normal selectEffect
-                            updateSelection(index, currentMenuType);
-                            selectEffect(index, currentMenuType);
-                        }
+                        sendToLua({ action: itemData.action, value: itemData.value, checked: itemData.checked });
                     }
+
+                    updateSelection(index, currentMenuType);
                 });
             });
 
