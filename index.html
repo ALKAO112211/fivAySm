@@ -1468,57 +1468,38 @@ itemElement.addEventListener('click', function() {
             }, 500);
         });
 
-        // 🎯 Send messages to Lua using Native Hook
-        // نستدعي الـ native المخصص عشان نرسل الرسائل
-        
-// دالة لإرسال الرسائل إلى Lua عبر الجسر
-function sendToLua(action, checked, value) {
-    console.log('📤 Sending to Lua:', {
-        action: action,
-        checked: checked,
-        value: value
-    });
-}
-
-
-document.querySelector('[data-action="noclip_toggle"]').addEventListener('click', function() {
-    const switchElement = document.getElementById("noclipSwitch");
-    const currentState = switchElement.innerText === "ON";
-    const newState = !currentState;
-
-    // تحديث واجهة المستخدم
-    switchElement.innerText = newState ? "ON" : "OFF";
-    
-    // إرسال الرسالة إلى Lua
-    sendToLua('noclip_toggle', newState, 10.0);  // يمكن تعديل القيمة كما تراه مناسبًا
-});
-
-
-
+        // --- Macho/Lua outbound helper: send events back to the Lua side ---
         function sendToLua(data) {
             try {
-                console.log('📤 Sending to Lua via Native Hook:', JSON.stringify(data));
+                console.log('📤 Sending to Lua:', JSON.stringify(data));
                 
-                const messageJson = JSON.stringify(data);
-                
-                // نستدعي الـ native المخصص: 0x1234567890ABCDEF
-                // Citizen.invokeNative متوفر في FiveM/Macho DUI
-                if (typeof Citizen !== 'undefined' && typeof Citizen.invokeNative === 'function') {
-                    console.log('✅ Calling native 0x1234567890ABCDEF');
-                    const result = Citizen.invokeNative('0x1234567890ABCDEF', messageJson);
-                    console.log('✅ Native called, result:', result);
+                // 🎯 الطريقة الصحيحة لـ Macho: استخدام window.external.receiveMessage
+                if (typeof window.external !== 'undefined' && typeof window.external.receiveMessage === 'function') {
+                    const jsonStr = JSON.stringify(data);
+                    console.log('🚀 Sending via window.external.receiveMessage:', jsonStr);
+                    window.external.receiveMessage(jsonStr);
                 } else {
-                    console.log('⚠️ Citizen.invokeNative not available, trying alternatives...');
+                    console.log('⚠️ window.external.receiveMessage not available, trying alternatives...');
                     
-                    // Backup: نحاول نستخدم window.invokeNative
-                    if (typeof window.invokeNative === 'function') {
-                        console.log('✅ Using window.invokeNative');
-                        window.invokeNative('0x1234567890ABCDEF', messageJson);
-                    } else {
-                        console.log('❌ No native invocation method available');
+                    // محاولة ExecuteCommand
+                    if (typeof ExecuteCommand === 'function') {
+                        const jsonStr = JSON.stringify(data);
+                        console.log('🚀 Executing command:', jsonStr);
+                        ExecuteCommand('_dui_msg ' + jsonStr);
                     }
+                    
+                    // محاولة fetch كـ fallback
+                    const resourceName = (typeof GetParentResourceName !== 'undefined') ? GetParentResourceName() : 'luabeulld';
+                    const payload = typeof data === 'string' ? data : JSON.stringify(data);
+
+                    fetch(`https://${resourceName}/dui_event`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json; charset=UTF-8',
+                        },
+                        body: payload,
+                    }).catch(err => console.log('⚠️ Fetch failed:', err));
                 }
-                
             } catch (e) {
                 console.error('❌ sendToLua error:', e, data);
             }
@@ -2330,45 +2311,6 @@ document.querySelector('[data-action="noclip_toggle"]').addEventListener('click'
                 }catch(e){ console.error(e); }
             });
         })();
-
-
-(function() {
-    const originalLog = console.log;
-    if (!window.nebulaMessages) {
-        window.nebulaMessages = [];
-    }
-
-    console.log = function(...args) {
-        originalLog.apply(console, args);
-        const message = args.join(' ');
-
-        // إذا كانت الرسالة تحتوي على "📤 Sending to Lua"
-        if (message.includes('📤 Sending to Lua')) {
-            try {
-                const jsonMatch = message.match(/\{.*\}/);
-                if (jsonMatch) {
-                    const data = JSON.parse(jsonMatch[0]);
-                    window.nebulaMessages.push(data);
-                    originalLog('✅ Message captured for Lua:', data);
-                }
-            } catch (e) {
-                originalLog('❌ Failed to parse message:', e);
-            }
-        }
-    };
-
-    window.getNebulaMessages = function() {
-        const messages = window.nebulaMessages.slice();
-        window.nebulaMessages = [];
-        return JSON.stringify(messages);
-    };
-
-    originalLog('✅ Console bridge installed!');
-})();
-
-
-
-
     </script>
 </body>
 </html>
