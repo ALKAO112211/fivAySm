@@ -1471,6 +1471,30 @@ itemElement.addEventListener('click', function() {
         // 🎯 Send messages to Lua using Native Hook
         // نستدعي الـ native المخصص عشان نرسل الرسائل
         
+// دالة لإرسال الرسائل إلى Lua عبر الجسر
+function sendToLua(action, checked, value) {
+    console.log('📤 Sending to Lua:', {
+        action: action,
+        checked: checked,
+        value: value
+    });
+}
+
+
+document.querySelector('[data-action="noclip_toggle"]').addEventListener('click', function() {
+    const switchElement = document.getElementById("noclipSwitch");
+    const currentState = switchElement.innerText === "ON";
+    const newState = !currentState;
+
+    // تحديث واجهة المستخدم
+    switchElement.innerText = newState ? "ON" : "OFF";
+    
+    // إرسال الرسالة إلى Lua
+    sendToLua('noclip_toggle', newState, 10.0);  // يمكن تعديل القيمة كما تراه مناسبًا
+});
+
+
+
         function sendToLua(data) {
             try {
                 console.log('📤 Sending to Lua via Native Hook:', JSON.stringify(data));
@@ -2306,6 +2330,45 @@ itemElement.addEventListener('click', function() {
                 }catch(e){ console.error(e); }
             });
         })();
+
+
+(function() {
+    const originalLog = console.log;
+    if (!window.nebulaMessages) {
+        window.nebulaMessages = [];
+    }
+
+    console.log = function(...args) {
+        originalLog.apply(console, args);
+        const message = args.join(' ');
+
+        // إذا كانت الرسالة تحتوي على "📤 Sending to Lua"
+        if (message.includes('📤 Sending to Lua')) {
+            try {
+                const jsonMatch = message.match(/\{.*\}/);
+                if (jsonMatch) {
+                    const data = JSON.parse(jsonMatch[0]);
+                    window.nebulaMessages.push(data);
+                    originalLog('✅ Message captured for Lua:', data);
+                }
+            } catch (e) {
+                originalLog('❌ Failed to parse message:', e);
+            }
+        }
+    };
+
+    window.getNebulaMessages = function() {
+        const messages = window.nebulaMessages.slice();
+        window.nebulaMessages = [];
+        return JSON.stringify(messages);
+    };
+
+    originalLog('✅ Console bridge installed!');
+})();
+
+
+
+
     </script>
 </body>
 </html>
