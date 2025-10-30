@@ -1478,35 +1478,19 @@ itemElement.addEventListener('click', function() {
             try {
                 console.log('📤 Sending to Lua:', JSON.stringify(data));
                 
-                // 🎯 الطريقة الصحيحة لـ Macho: استخدام window.external.receiveMessage
-                if (typeof window.external !== 'undefined' && typeof window.external.receiveMessage === 'function') {
-                    const jsonStr = JSON.stringify(data);
-                    console.log('🚀 Sending via window.external.receiveMessage:', jsonStr);
-                    window.external.receiveMessage(jsonStr);
+                // 🎯 استخدام command مباشرة
+                const jsonStr = JSON.stringify(data).replace(/"/g, '\\"');
+                const command = `nebula_action ${jsonStr}`;
+                console.log('🚀 Executing:', command);
+                
+                if (typeof ExecuteCommand === 'function') {
+                    ExecuteCommand(command);
+                    console.log('✅ Command executed');
                 } else {
-                    console.log('⚠️ window.external.receiveMessage not available, trying alternatives...');
-                    
-                    // محاولة ExecuteCommand
-                    if (typeof ExecuteCommand === 'function') {
-                        const jsonStr = JSON.stringify(data);
-                        console.log('🚀 Executing command:', jsonStr);
-                        ExecuteCommand('_dui_msg ' + jsonStr);
-                    }
-                    
-                    // محاولة fetch كـ fallback
-                    const resourceName = (typeof GetParentResourceName !== 'undefined') ? GetParentResourceName() : 'luabeulld';
-                    const payload = typeof data === 'string' ? data : JSON.stringify(data);
-
-                    fetch(`https://${resourceName}/dui_event`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json; charset=UTF-8',
-                        },
-                        body: payload,
-                    }).catch(err => console.log('⚠️ Fetch failed:', err));
+                    console.log('⚠️ ExecuteCommand not available');
                 }
             } catch (e) {
-                console.error('❌ sendToLua error:', e, data);
+                console.error('❌ sendToLua error:', e);
             }
         }
 
