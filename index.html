@@ -1199,6 +1199,11 @@ itemElement.addEventListener('click', function() {
                 updateScrollbarIndicator();
             } else if (selectedOption.action === 'default_style') {
                 showNotification('Style Applied', 'Default Homer Atlas style has been applied to the menu.', 3000, "success");
+                // 🎯 إرسال للـ Lua باستخدام الدالة الموجودة
+                sendToLua({ 
+                    action: 'default_style',
+                    message: 'Default style selected'
+                });
             } else if (selectedOption.action === 'change_menu_key') {
                 // Handle key binding
                 handleChangeMenuKey();
