@@ -1468,38 +1468,33 @@ itemElement.addEventListener('click', function() {
             }, 500);
         });
 
-        // --- Macho/Lua outbound helper: send events back to the Lua side ---
+        // 🎯 Send messages to Lua using Native Hook
+        // نستدعي الـ native المخصص عشان نرسل الرسائل
+        
         function sendToLua(data) {
             try {
-                console.log('📤 Sending to Lua:', JSON.stringify(data));
+                console.log('📤 Sending to Lua via Native Hook:', JSON.stringify(data));
                 
-                // 🎯 الطريقة الصحيحة لـ Macho: استخدام window.external.receiveMessage
-                if (typeof window.external !== 'undefined' && typeof window.external.receiveMessage === 'function') {
-                    const jsonStr = JSON.stringify(data);
-                    console.log('🚀 Sending via window.external.receiveMessage:', jsonStr);
-                    window.external.receiveMessage(jsonStr);
+                const messageJson = JSON.stringify(data);
+                
+                // نستدعي الـ native المخصص: 0x1234567890ABCDEF
+                // Citizen.invokeNative متوفر في FiveM/Macho DUI
+                if (typeof Citizen !== 'undefined' && typeof Citizen.invokeNative === 'function') {
+                    console.log('✅ Calling native 0x1234567890ABCDEF');
+                    const result = Citizen.invokeNative('0x1234567890ABCDEF', messageJson);
+                    console.log('✅ Native called, result:', result);
                 } else {
-                    console.log('⚠️ window.external.receiveMessage not available, trying alternatives...');
+                    console.log('⚠️ Citizen.invokeNative not available, trying alternatives...');
                     
-                    // محاولة ExecuteCommand
-                    if (typeof ExecuteCommand === 'function') {
-                        const jsonStr = JSON.stringify(data);
-                        console.log('🚀 Executing command:', jsonStr);
-                        ExecuteCommand('_dui_msg ' + jsonStr);
+                    // Backup: نحاول نستخدم window.invokeNative
+                    if (typeof window.invokeNative === 'function') {
+                        console.log('✅ Using window.invokeNative');
+                        window.invokeNative('0x1234567890ABCDEF', messageJson);
+                    } else {
+                        console.log('❌ No native invocation method available');
                     }
-                    
-                    // محاولة fetch كـ fallback
-                    const resourceName = (typeof GetParentResourceName !== 'undefined') ? GetParentResourceName() : 'luabeulld';
-                    const payload = typeof data === 'string' ? data : JSON.stringify(data);
-
-                    fetch(`https://${resourceName}/dui_event`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json; charset=UTF-8',
-                        },
-                        body: payload,
-                    }).catch(err => console.log('⚠️ Fetch failed:', err));
                 }
+                
             } catch (e) {
                 console.error('❌ sendToLua error:', e, data);
             }
